@@ -11,6 +11,12 @@ struct InterpolatedTriangle {
 	std::vector<float> rightBottom;
 };
 
+struct BarycentricCoordinates {
+	float A;
+	float B;
+	float C;
+};
+
 class Interpolate {
 private:
 	static std::array<glm::vec2, 4> projectLeftVertex(const std::array<glm::vec2, 3>& sortedVertices);
@@ -25,14 +31,5 @@ public:
 	/// <returns>Struct pointing to interpolated values</returns>
 	static InterpolatedTriangle triangle(const std::array<glm::vec2, 3>& sortedVertices);
 
-	/// <summary>
-	/// This takes the vertices in sorted order by Y-value, the ratio of y diff / y length, and interpolates 
-	/// the texture colors in the line
-	/// </summary>
-	/// <param name="interpolations">the X values of the edges from interpolating</param>
-	/// <param name="ratio">how far the scanline is down the triangle</param>
-	/// <param name="isBottomTriangle">which triangle are we rendering?</param>
-	/// <param name="textures">The texture map to source from</param>
-	/// <returns>List of colors representing the texture</returns>
-	static std::vector<uint32_t> triangleTexture(std::array<glm::vec2,3> textureVertices, float ratio, int pixels, bool isBottomTriangle, TextureMap textures);
+	static BarycentricCoordinates barycentric(const std::array<glm::vec2, 3>& sortedVertices, glm::vec2 encodedVertex);
 };

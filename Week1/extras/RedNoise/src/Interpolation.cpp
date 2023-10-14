@@ -22,7 +22,6 @@ std::vector<float> Interpolate::singleFloat(float from, float to, int numberOfVa
 	if (from - to == 0) return {from};
 	std::vector<float> output = {};
 	for (int i = 0; i < numberOfValues; i++) {
-		std::cout << from + i * increment << std::endl;
 		output.push_back(from + i * increment);
 	}
 	return output;
@@ -53,43 +52,25 @@ InterpolatedTriangle Interpolate::triangle(const std::array<glm::vec2, 3>& sorte
 	return output;
 }
 
-std::vector<uint32_t> Interpolate::triangleTexture(std::array<glm::vec2, 3> textureVertices, float ratio, int pixels, bool isBottomTriangle, TextureMap textures) {
+BarycentricCoordinates Interpolate::barycentric(const std::array<glm::vec2, 3>& sortedVertices, glm::vec2 encodedVertex) {
+	glm::vec2 top = sortedVertices[0];
+	glm::vec2 middle = sortedVertices[1];
+	glm::vec2 bottom = sortedVertices[2];
+	BarycentricCoordinates output = {};
 
-	// get a left vertex
-	std::array<glm::vec2, 4> vertices = projectLeftVertex(textureVertices);
+	// refer to barycentric coordinates math
+	float denominator = ((middle.y - bottom.y) * (top.x - bottom.x)
+		+ (bottom.x - middle.x) * (top.y - bottom.y));
 
-	// get the start equivalent on the texture
-	int topLeftYDifference = vertices[1].y - vertices[0].y;
-	int leftBottomYDifference = vertices[3].y - vertices[1].y;
-	int topLeftXDifference = vertices[1].x - vertices[0].x;
-	int leftBottomXDifference = vertices[3].x - vertices[1].x;
+	output.A =
+		((middle.y - bottom.y) * (encodedVertex.x - bottom.x)
+			+ (bottom.x - middle.x) * (encodedVertex.y - bottom.y))
+		/ denominator;
+	output.B = 
+		((bottom.y - top.y) * (encodedVertex.x - bottom.x) 
+			+ (top.x - bottom.x) * (encodedVertex.y - bottom.y))
+		/ denominator;
+	output.C = 1 - output.A - output.B;
 
-	glm::vec2 startCoordinate(
-		std::floor((isBottomTriangle ? leftBottomXDifference : topLeftXDifference) * ratio),
-		std::floor((isBottomTriangle ? leftBottomYDifference : topLeftYDifference) * ratio)
-	);
-
-	// get the end equivalent on the texture
-	int topRightYDifference = vertices[0].y - vertices[2].y;
-	int topRightXDifference = vertices[0].x - vertices[2].y;
-	int rightBottomYDifference = vertices[2].y - vertices[3].y;
-	int rightBottomXDifference = vertices[2].x - vertices[3].x;
-	
-	glm::vec2 endCoordinate(
-		std::ceil((isBottomTriangle ? leftBottomXDifference : topRightXDifference) * ratio),
-		std::ceil((isBottomTriangle ? leftBottomYDifference : topRightYDifference) * ratio)
-	);
-
-	std::vector<float> xTextureInterpolations = singleFloat(startCoordinate.x, endCoordinate.x, pixels);
-	std::vector<float> yTextureInterpolations = singleFloat(startCoordinate.y, endCoordinate.y, pixels);
-
-	std::vector<uint32_t> output;
-	for (int i = 0; i < pixels; i++) {
-		std::cout << std::round(xTextureInterpolations[i]) + std::round(yTextureInterpolations[i] * textures.width) << std::endl;
-		output.push_back(
-			textures.pixels[std::round(xTextureInterpolations[i]) + std::round(yTextureInterpolations[i] * textures.width)]
-		);
-	}
-	
 	return output;
 }
