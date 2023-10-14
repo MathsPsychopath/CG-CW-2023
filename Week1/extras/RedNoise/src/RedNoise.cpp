@@ -13,7 +13,7 @@
 #define HEIGHT 240
 
 // left -> right, top -> bottom
-void sortTriangle(std::array<glm::vec2, 3>& vertices) {
+void sortTriangle(std::array<CanvasPoint, 3>& vertices) {
 	// Uses glm::vec2 because it has a common 2 member interface
 	if (vertices[0].y > vertices[1].y) {
 		std::swap(vertices[0], vertices[1]);
@@ -49,10 +49,7 @@ void drawStrokedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colour 
 
 void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colour color) {
 	// translate vertices to interface type
-	glm::vec2 v0(triangle.v0().x, triangle.v0().y);
-	glm::vec2 v1(triangle.v1().x, triangle.v1().y);
-	glm::vec2 v2(triangle.v2().x, triangle.v2().y);
-	std::array<glm::vec2, 3> vertices = { v0, v1, v2 };
+	std::array<CanvasPoint, 3> vertices = { triangle.v0(), triangle.v1(), triangle.v2()};
 
 	// sort triangle and interpolate
 	sortTriangle(vertices);
@@ -74,29 +71,32 @@ void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colo
 	drawStrokedTriangle(window, triangle, Colour(255, 255, 255));
 }
 
-uint32_t getTexture(BarycentricCoordinates coordinates, std::array<glm::vec2, 3> sortedVertices, TextureMap textures) {
+uint32_t getTexture(BarycentricCoordinates coordinates, std::array<CanvasPoint, 3> sortedVertices, TextureMap textures) {
+	int width = textures.width;
+	int height = textures.height;
+	glm::vec2 textureA(sortedVertices[0]/*.texturePoint*/.x, sortedVertices[0]/*.texturePoint*/.y);
+	glm::vec2 textureB(sortedVertices[1]/*.texturePoint*/.x, sortedVertices[1]/*.texturePoint*/.y);
+	glm::vec2 textureC(sortedVertices[2]/*.texturePoint*/.x, sortedVertices[2]/*.texturePoint*/.y);
 	glm::vec2 textureCoordinate =
-		sortedVertices[0] * coordinates.A +
-		sortedVertices[1] * coordinates.B +
-		sortedVertices[2] * coordinates.C;
+		textureA * coordinates.A +
+		textureB * coordinates.B +
+		textureC * coordinates.C; 
 
-	return textures.pixels[textureCoordinate.x + textureCoordinate.y * textures.width];
+	return textures.pixels[std::floor(textureCoordinate.x + textureCoordinate.y * width)];
 }
 
 void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, TextureMap textures) {
 	// translate vertices to interface type
-	glm::vec2 v0(triangle.v0().x, triangle.v0().y);
-	glm::vec2 v1(triangle.v1().x, triangle.v1().y);
-	glm::vec2 v2(triangle.v2().x, triangle.v2().y);
-	std::array<glm::vec2, 3> canvasVertices = { v0, v1, v2 };
+	std::array<CanvasPoint, 3> canvasVertices = { triangle.v0(), triangle.v1(), triangle.v2()};
 
 	// sort canvas triangle and interpolate
 	sortTriangle(canvasVertices);
+	std::cout << canvasVertices[0] << canvasVertices[1] << canvasVertices[2] << std::endl;
 	InterpolatedTriangle interpolations = Interpolate::triangle(canvasVertices);
 
 	// rasterize top triangle with textures
 	for (int y = canvasVertices[0].y, i = 0; y < canvasVertices[1].y; y++, i++) {
-		for (int x = std::floor(interpolations.topLeft[i]), j = 0; x < std::ceil(interpolations.topRight[i]); x++, j++) {
+		for (int x = std::floor(interpolations.topLeft[i]); x < std::ceil(interpolations.topRight[i]); x++) {
 			glm::vec2 currentVertex(x, y);
 			BarycentricCoordinates ratios = Interpolate::barycentric(canvasVertices, currentVertex);
 			uint32_t pixelTexture = getTexture(ratios, canvasVertices, textures);
@@ -106,7 +106,7 @@ void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Text
 
 	// rasterize bottom triangle with textures
 	for (int y = canvasVertices[1].y, i = 0; y < canvasVertices[2].y; y++, i++) {
-		for (int x = std::floor(interpolations.leftBottom[i]), j = 0; x < std::ceil(interpolations.rightBottom[i]); x++, j++) {
+		for (int x = std::floor(interpolations.leftBottom[i]); x < std::ceil(interpolations.rightBottom[i]); x++) {
 			glm::vec2 currentVertex(x, y);
 			BarycentricCoordinates ratios = Interpolate::barycentric(canvasVertices, currentVertex);
 			uint32_t pixelTexture = getTexture(ratios, canvasVertices, textures);
