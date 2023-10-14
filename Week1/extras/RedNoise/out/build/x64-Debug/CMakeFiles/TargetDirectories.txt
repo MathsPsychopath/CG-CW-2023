@@ -1,3 +1,0 @@
-C:/Users/0aaro/source/repos/CG-CW-2023/Week1/extras/RedNoise/out/build/x64-Debug/CMakeFiles/RedNoise.dir
-C:/Users/0aaro/source/repos/CG-CW-2023/Week1/extras/RedNoise/out/build/x64-Debug/CMakeFiles/edit_cache.dir
-C:/Users/0aaro/source/repos/CG-CW-2023/Week1/extras/RedNoise/out/build/x64-Debug/CMakeFiles/rebuild_cache.dir

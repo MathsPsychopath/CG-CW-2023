@@ -7,27 +7,23 @@
 #include <CanvasPoint.h>
 #include <Colour.h>
 #include <TextureMap.h>
+#include "Interpolation.h"
 
 #define WIDTH 320
 #define HEIGHT 240
 
-std::vector<float> interpolateSingleFloats(float from, float to, int numberOfValues) {
-	const float increment = (to - from) / (numberOfValues - 1);
-	std::vector<float> output = {};
-	for (int i = 0; i < numberOfValues; i++) {
-		output.push_back(from + i * increment);
+// left -> right, top -> bottom
+void sortTriangle(std::array<glm::vec2, 3>& vertices) {
+	// Uses glm::vec2 because it has a common 2 member interface
+	if (vertices[0].y > vertices[1].y) {
+		std::swap(vertices[0], vertices[1]);
 	}
-	return output;
-}
-
-std::vector<glm::vec3> interpolateThreeElementValues(glm::vec3 from, glm::vec3 to, int numberOfValues) {
-	const int indices = numberOfValues - 1;
-	glm::vec3 steps((to.x - from.x) / indices, (to.y - from.y) / indices, (to.z - from.z) / indices);
-	std::vector<glm::vec3> output = {};
-	for (int i = 0; i < numberOfValues; i++) {
-		output.push_back(from + (steps * float(i)));
+	if (vertices[1].y > vertices[2].y) {
+		std::swap(vertices[1], vertices[2]);
 	}
-	return output;
+	if (vertices[0].y > vertices[1].y) {
+		std::swap(vertices[0], vertices[1]);
+	}
 }
 
 void drawLine(DrawingWindow& window, CanvasPoint start, CanvasPoint end, Colour color) {
@@ -52,45 +48,26 @@ void drawStrokedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colour 
 }
 
 void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colour color) {
-	// order the list
-	CanvasPoint vertices[3] = {triangle.v0(), triangle.v1(), triangle.v2()};
-	if (vertices[0].y > vertices[1].y) {
-		std::swap(vertices[0], vertices[1]);
-	}
-	if (vertices[1].y > vertices[2].y) {
-		std::swap(vertices[1], vertices[2]);
-	}
-	if (vertices[0].y > vertices[1].y) {
-		std::swap(vertices[0], vertices[1]);
-	}
+	// translate vertices to interface type
+	glm::vec2 v0(triangle.v0().x, triangle.v0().y);
+	glm::vec2 v1(triangle.v1().x, triangle.v1().y);
+	glm::vec2 v2(triangle.v2().x, triangle.v2().y);
+	std::array<glm::vec2, 3> vertices = { v0, v1, v2 };
 
-	// Compute projection, which is the linear interpolation formula rearranged for x
-	float xProjection = vertices[0].x
-		+ ((vertices[1].y - vertices[0].y) / (vertices[2].y - vertices[0].y)) 
-		* (vertices[2].x - vertices[0].x);
+	// sort triangle and interpolate
+	sortTriangle(vertices);
+	InterpolatedTriangle interpolations = Interpolate::triangle(vertices);
 
-	CanvasPoint projectedPoint = CanvasPoint(std::round(xProjection), vertices[1].y);
-
-	// decide the left most vertex
-	CanvasPoint left = projectedPoint.x < vertices[1].x ? projectedPoint : vertices[1];
-	CanvasPoint right = left.x == projectedPoint.x ? vertices[1] : projectedPoint;
-
-	// interpolate x values for edges
-	std::vector<float> topLeftXValues = interpolateSingleFloats(vertices[0].x, left.x, std::abs(left.y - vertices[0].y));
-	std::vector<float> topRightXValues = interpolateSingleFloats(vertices[0].x, right.x, std::abs(right.y - vertices[0].y));
-	std::vector<float> leftBottomXValues = interpolateSingleFloats(left.x, vertices[2].x, std::abs(vertices[2].y - left.y));
-	std::vector<float> rightBottomXValues = interpolateSingleFloats(right.x, vertices[2].x, std::abs(right.y - vertices[2].y));
-	
 	// rasterize top triangle
 	uint32_t pixelColor = (255 << 24) + (int(color.red) << 16) + (int(color.green) << 8) + int(color.blue);
-	for (int y = vertices[0].y, i = 0; y < right.y; y++, i++) {
-		for (int x = std::floor(topLeftXValues[i]); x < std::ceil(topRightXValues[i]); x++) {
+	for (int y = vertices[0].y, i = 0; y < vertices[1].y; y++, i++) {
+		for (int x = std::floor(interpolations.topLeftXValues[i]); x < std::ceil(interpolations.topRightXValues[i]); x++) {
 			window.setPixelColour(x, y, pixelColor);
 		}
 	}
 	// rasterize bottom triangle
-	for (int y = left.y, i = 0; y < vertices[2].y; y++, i++) {
-		for (int x = std::floor(leftBottomXValues[i]); x < std::ceil(rightBottomXValues[i]); x++) {
+	for (int y = vertices[1].y, i = 0; y < vertices[2].y; y++, i++) {
+		for (int x = std::floor(interpolations.leftBottomXValues[i]); x < std::ceil(interpolations.rightBottomXValues[i]); x++) {
 			window.setPixelColour(x, y, pixelColor);
 		}
 	}
@@ -107,13 +84,13 @@ void draw(DrawingWindow &window) {
 	glm::vec3 bottomLeft(255, 255, 0);
 
 	std::vector<glm::vec3> startColumnInterpolation = 
-		interpolateThreeElementValues(topLeft, bottomLeft, window.height);
+		Interpolate::threeElementValues(topLeft, bottomLeft, window.height);
 	std::vector<glm::vec3> endColumnInterpolation =
-		interpolateThreeElementValues(topRight, bottomRight, window.height);
+		Interpolate::threeElementValues(topRight, bottomRight, window.height);
 
 	for (size_t y = 0; y < window.height; y++) {
 		std::vector<glm::vec3> rowInterpolation = 
-			interpolateThreeElementValues(startColumnInterpolation[y], endColumnInterpolation[y], window.width);
+			Interpolate::threeElementValues(startColumnInterpolation[y], endColumnInterpolation[y], window.width);
 		for (size_t x = 0; x < window.width; x++) {
 			glm::vec3 currentPixel = rowInterpolation[x];
 			float red = currentPixel.x;
