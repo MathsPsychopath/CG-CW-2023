@@ -61,20 +61,59 @@ void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colo
 	// rasterize top triangle
 	uint32_t pixelColor = (255 << 24) + (int(color.red) << 16) + (int(color.green) << 8) + int(color.blue);
 	for (int y = vertices[0].y, i = 0; y < vertices[1].y; y++, i++) {
-		for (int x = std::floor(interpolations.topLeftXValues[i]); x < std::ceil(interpolations.topRightXValues[i]); x++) {
+		for (int x = std::floor(interpolations.topLeft[i]); x < std::ceil(interpolations.topRight[i]); x++) {
 			window.setPixelColour(x, y, pixelColor);
 		}
 	}
 	// rasterize bottom triangle
 	for (int y = vertices[1].y, i = 0; y < vertices[2].y; y++, i++) {
-		for (int x = std::floor(interpolations.leftBottomXValues[i]); x < std::ceil(interpolations.rightBottomXValues[i]); x++) {
+		for (int x = std::floor(interpolations.leftBottom[i]); x < std::ceil(interpolations.rightBottom[i]); x++) {
 			window.setPixelColour(x, y, pixelColor);
 		}
 	}
 	drawStrokedTriangle(window, triangle, Colour(255, 255, 255));
 }
 
-void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, TextureMap textures) {}
+void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, TextureMap textures) {
+	// translate vertices to interface type
+	glm::vec2 v0(triangle.v0().x, triangle.v0().y);
+	glm::vec2 v1(triangle.v1().x, triangle.v1().y);
+	glm::vec2 v2(triangle.v2().x, triangle.v2().y);
+	std::array<glm::vec2, 3> canvasVertices = { v0, v1, v2 };
+
+	// sort canvas triangle and interpolate
+	sortTriangle(canvasVertices);
+	InterpolatedTriangle interpolations = Interpolate::triangle(canvasVertices);
+
+	// translate texture vertices to interface type
+	glm::vec2 tv0(triangle.v0().texturePoint.x, triangle.v0().texturePoint.y);
+	glm::vec2 tv1(triangle.v1().texturePoint.x, triangle.v1().texturePoint.y);
+	glm::vec2 tv2(triangle.v2().texturePoint.x, triangle.v2().texturePoint.y);
+	std::array<glm::vec2, 3> textureVertices = { tv0, tv1, tv2 };
+
+	sortTriangle(textureVertices);
+
+	// rasterize top triangle with textures
+	for (int y = canvasVertices[0].y, i = 0; y < canvasVertices[1].y; y++, i++) {
+		float yRatio = (y - canvasVertices[0].y) / (canvasVertices[1].y - canvasVertices[0].y);
+
+		std::vector<uint32_t> pixelTextures = 
+			Interpolate::triangleTexture(textureVertices, yRatio, interpolations.topRight[i] - interpolations.topLeft[i], false, textures);
+		for (int x = std::floor(interpolations.topLeft[i]), j = 0; x < std::ceil(interpolations.topRight[i]); x++, j++) {
+			window.setPixelColour(x, y, pixelTextures[i]);
+		}
+	}
+
+	// rasterize bottom triangle with textures
+	for (int y = canvasVertices[1].y, i = 0; y < canvasVertices[2].y; y++, i++) {
+		float yRatio = (y - canvasVertices[1].y) / (canvasVertices[2].y - canvasVertices[1].y);
+		std::vector<uint32_t> pixelTextures = 
+			Interpolate::triangleTexture(textureVertices, yRatio, interpolations.rightBottom[i] - interpolations.leftBottom[i], true, textures);
+		for (int x = std::floor(interpolations.leftBottom[i]), j = 0; x < std::ceil(interpolations.rightBottom[i]); x++, j++) {
+			window.setPixelColour(x, y, pixelTextures[i]);
+		}
+	}
+}
 
 void draw(DrawingWindow &window) {
 	window.clearPixels();
@@ -138,9 +177,16 @@ int main(int argc, char *argv[]) {
 	DrawingWindow window = DrawingWindow(WIDTH, HEIGHT, false);
 	SDL_Event event;
 
+	CanvasTriangle triangle(CanvasPoint(160, 10), CanvasPoint(300, 230), CanvasPoint(10, 150));
+	triangle.v0().texturePoint = TexturePoint(195, 5);
+	triangle.v1().texturePoint = TexturePoint(395, 380);
+	triangle.v2().texturePoint = TexturePoint(65, 330);
+	TextureMap textures = TextureMap("texture.ppm");
+
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window);
+		//drawRasterizedTriangle(window, triangle, textures);
 		//drawRasterizedTriangle(window, CanvasTriangle(CanvasPoint(WIDTH / 3, HEIGHT / 2), CanvasPoint((WIDTH * 2) / 3, HEIGHT / 3), CanvasPoint(WIDTH /2, 300)), Colour(40, 200, 40));
 		//draw(window);
 		/*drawLine(window, CanvasPoint(0, 0), CanvasPoint(WIDTH / 2, HEIGHT / 2), Colour(255, 255, 255));
