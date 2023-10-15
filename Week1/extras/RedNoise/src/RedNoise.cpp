@@ -74,15 +74,15 @@ void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colo
 uint32_t getTexture(BarycentricCoordinates coordinates, std::array<CanvasPoint, 3> sortedVertices, TextureMap textures) {
 	int width = textures.width;
 	int height = textures.height;
-	glm::vec2 textureA(sortedVertices[0]/*.texturePoint*/.x, sortedVertices[0]/*.texturePoint*/.y);
-	glm::vec2 textureB(sortedVertices[1]/*.texturePoint*/.x, sortedVertices[1]/*.texturePoint*/.y);
-	glm::vec2 textureC(sortedVertices[2]/*.texturePoint*/.x, sortedVertices[2]/*.texturePoint*/.y);
+	glm::vec2 textureA(sortedVertices[0].texturePoint.x, sortedVertices[0].texturePoint.y);
+	glm::vec2 textureB(sortedVertices[1].texturePoint.x, sortedVertices[1].texturePoint.y);
+	glm::vec2 textureC(sortedVertices[2].texturePoint.x, sortedVertices[2].texturePoint.y);
 	glm::vec2 textureCoordinate =
 		textureA * coordinates.A +
 		textureB * coordinates.B +
 		textureC * coordinates.C; 
 
-	return textures.pixels[std::floor(textureCoordinate.x + textureCoordinate.y * width)];
+	return textures.pixels[std::floor(textureCoordinate.x) + std::floor(textureCoordinate.y) * width];
 }
 
 void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, TextureMap textures) {
