@@ -81,5 +81,6 @@ void FileReader::readMTLFile(std::string filename) {
 			);
 		}
 	}
+	inputStream.close();
 }
 

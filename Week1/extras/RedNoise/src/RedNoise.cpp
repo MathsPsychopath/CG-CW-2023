@@ -32,7 +32,25 @@ void draw(DrawingWindow &window) {
 	}
 }
 
+void drawPointCloud(DrawingWindow& window, glm::vec3 cameraPosition, std::unordered_map<std::string, glm::vec3> loadedVertices) {
 
+	for (const auto& pair : loadedVertices) {
+		CanvasPoint point = Interpolate::canvasIntersection(cameraPosition, pair.second, 2.0);
+		uint32_t color = (255 << 24) + (255 << 16) + (255 << 8) + 255;
+		window.setPixelColour(point.x, point.y, color);
+	}
+}
+
+void drawWireframe(DrawingWindow& window, glm::vec3 cameraPosition, std::vector<ModelTriangle> objects) {
+	for (const ModelTriangle& object : objects) {
+		CanvasPoint first = Interpolate::canvasIntersection(cameraPosition, object.vertices[0], 2.0);
+		CanvasPoint second = Interpolate::canvasIntersection(cameraPosition, object.vertices[1], 2.0);
+		CanvasPoint third = Interpolate::canvasIntersection(cameraPosition, object.vertices[2], 2.0);
+
+		CanvasTriangle flattened(first, second, third);
+		Triangle::drawStrokedTriangle(window, flattened, Colour(255, 255, 255));
+	}
+}
 
 void handleEvent(SDL_Event event, DrawingWindow &window) {
 	if (event.type == SDL_KEYDOWN) {
@@ -64,13 +82,18 @@ int main(int argc, char *argv[]) {
 	triangle.v2().texturePoint = TexturePoint(65, 330);
 	TextureMap textures = TextureMap("texture.ppm");
 
+	glm::vec3 cameraPosition(0.0, 0.0, 4.0);
+
 	FileReader fr;
 	fr.readMTLFile("cornell-box.mtl");
-	fr.readOBJFile("cornell-box.obj", 0.35);
+	std::vector<ModelTriangle> objects = fr.readOBJFile("cornell-box.obj", 0.35);
+
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window);
-		Triangle::drawRasterizedTriangle(window, triangle, textures);
+		//Triangle::drawRasterizedTriangle(window, triangle, textures);
+		//drawPointCloud(window, cameraPosition, fr.loadedVertices);
+		drawWireframe(window, cameraPosition, objects);
 		//drawRasterizedTriangle(window, CanvasTriangle(CanvasPoint(WIDTH / 3, HEIGHT / 2), CanvasPoint((WIDTH * 2) / 3, HEIGHT / 3), CanvasPoint(WIDTH /2, 300)), Colour(40, 200, 40));
 		//draw(window);
 		/*drawLine(window, CanvasPoint(0, 0), CanvasPoint(WIDTH / 2, HEIGHT / 2), Colour(255, 255, 255));

@@ -1,20 +1,21 @@
 #include "Interpolation.h"
 
-std::array<CanvasPoint, 4> Interpolate::projectLeftVertex(const std::array<CanvasPoint, 3>& sortedVertices) {
+namespace {
+	std::array<CanvasPoint, 4> projectLeftVertex(const std::array<CanvasPoint, 3>& sortedVertices) {
+		// Compute projection, which is the linear interpolation formula rearranged for x
+		float xProjection = sortedVertices[0].x
+			+ ((sortedVertices[1].y - sortedVertices[0].y) / (sortedVertices[2].y - sortedVertices[0].y))
+			* (sortedVertices[2].x - sortedVertices[0].x);
 
-	// Compute projection, which is the linear interpolation formula rearranged for x
-	float xProjection = sortedVertices[0].x
-		+ ((sortedVertices[1].y - sortedVertices[0].y) / (sortedVertices[2].y - sortedVertices[0].y))
-		* (sortedVertices[2].x - sortedVertices[0].x);
+		CanvasPoint projectedPoint = CanvasPoint(std::round(xProjection), sortedVertices[1].y);
 
-	CanvasPoint projectedPoint = CanvasPoint(std::round(xProjection), sortedVertices[1].y);
+		// decide the left most vertex
+		CanvasPoint left = projectedPoint.x < sortedVertices[1].x ? projectedPoint : sortedVertices[1];
+		CanvasPoint right = left.x == projectedPoint.x ? sortedVertices[1] : projectedPoint;
 
-	// decide the left most vertex
-	CanvasPoint left = projectedPoint.x < sortedVertices[1].x ? projectedPoint : sortedVertices[1];
-	CanvasPoint right = left.x == projectedPoint.x ? sortedVertices[1] : projectedPoint;
-
-	std::array<CanvasPoint, 4> output = { sortedVertices[0], left, right, sortedVertices[2] };
-	return output;
+		std::array<CanvasPoint, 4> output = { sortedVertices[0], left, right, sortedVertices[2] };
+		return output;
+	}
 }
 
 std::vector<float> Interpolate::singleFloat(float from, float to, int numberOfValues) {
@@ -50,3 +51,18 @@ InterpolatedTriangle Interpolate::triangle(const std::array<CanvasPoint, 3>& sor
 
 	return output;
 }
+
+CanvasPoint Interpolate::canvasIntersection(glm::vec3 cameraPosition, glm::vec3 vertexPosition, float focalLength) {
+
+	//glm::vec3 displacement = cameraPosition- vertexPosition;
+	glm::vec3 displacement = vertexPosition - cameraPosition;
+
+	int scaleFactor = 180;
+
+	float u = focalLength * (displacement.x / displacement.z) * scaleFactor + float(WIDTH) / 2;
+	
+	float v = focalLength * (displacement.y / displacement.z) * scaleFactor + float(HEIGHT) / 2;
+
+	return CanvasPoint(u,v);
+}
+
