@@ -11,6 +11,7 @@ public:
 	std::unordered_map<std::string, Colour> supportedColors;
 	std::unordered_map<std::string, glm::vec3> loadedVertices;
 
+	FileReader();
 
 	std::vector<ModelTriangle> readOBJFile(std::string filename, float scaleFactor);
 

@@ -12,12 +12,6 @@ struct InterpolatedTriangle {
 	std::vector<float> rightBottom;
 };
 
-struct BarycentricCoordinates {
-	float A;
-	float B;
-	float C;
-};
-
 class Interpolate {
 private:
 	static std::array<CanvasPoint, 4> projectLeftVertex(const std::array<CanvasPoint, 3>& sortedVertices);
@@ -31,6 +25,4 @@ public:
 	/// <param name="sortedVertices">vertices sorted by y-value lowest to highest</param>
 	/// <returns>Struct pointing to interpolated values</returns>
 	static InterpolatedTriangle triangle(const std::array<CanvasPoint, 3>& sortedVertices);
-
-	static BarycentricCoordinates barycentric(const std::array<CanvasPoint, 3>& sortedVertices, glm::vec2 encodedVertex);
 };

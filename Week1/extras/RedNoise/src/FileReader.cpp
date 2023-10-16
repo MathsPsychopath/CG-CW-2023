@@ -8,7 +8,7 @@ FileReader::FileReader() {
 std::vector<ModelTriangle> FileReader::readOBJFile(std::string filename, float scaleFactor) {
 	if (this->supportedColors.empty()) {
 		std::cout << "No palette detected" << std::endl;
-		return;
+		return {};
 	}
 	
 	std::ifstream inputStream(filename);
@@ -65,7 +65,6 @@ void FileReader::readMTLFile(std::string filename) {
 
 	std::string line;
 	std::string currentColor;
-	std::unordered_map<std::string, Colour> supportedColors;
 
 	while (std::getline(inputStream, line)) {
 		std::vector<std::string> tokens = split(line, ' ');
@@ -75,7 +74,7 @@ void FileReader::readMTLFile(std::string filename) {
 			currentColor = tokens[1];
 		}
 		else if (identifier == "Kd") {
-			supportedColors[currentColor] = Colour(
+			this->supportedColors[currentColor] = Colour(
 				std::round(std::stof(tokens[1]) * 255),
 				std::round(std::stof(tokens[2]) * 255),
 				std::round(std::stof(tokens[3]) * 255)

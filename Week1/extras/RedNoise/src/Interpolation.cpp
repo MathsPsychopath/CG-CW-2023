@@ -50,21 +50,3 @@ InterpolatedTriangle Interpolate::triangle(const std::array<CanvasPoint, 3>& sor
 
 	return output;
 }
-
-BarycentricCoordinates Interpolate::barycentric(const std::array<CanvasPoint, 3>& sortedVertices, glm::vec2 encodedVertex) {
-	CanvasPoint A = sortedVertices[0];
-	CanvasPoint B = sortedVertices[1];
-	CanvasPoint C = sortedVertices[2];
-	BarycentricCoordinates output = {};
-
-	// refer to barycentric coordinates math
-	float denominator = ((B.y - C.y) * (A.x - C.x) + (C.x - B.x) * (A.y - C.y));
-
-	output.A =((B.y - C.y) * (encodedVertex.x - C.x) + (C.x - B.x) * (encodedVertex.y - C.y)) / denominator;
-
-	output.B = ((C.y - A.y) * (encodedVertex.x - C.x) + (A.x - C.x) * (encodedVertex.y - C.y)) / denominator;
-
-	output.C = 1 - output.A - output.B;
-
-	return output;
-}
