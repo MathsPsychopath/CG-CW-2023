@@ -8,6 +8,8 @@
 #include <Colour.h>
 #include <TextureMap.h>
 #include "Interpolation.h"
+#include <ModelTriangle.h>
+#include "FileReader.h"
 
 #define WIDTH 320
 #define HEIGHT 240
@@ -103,7 +105,7 @@ void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Text
 			window.setPixelColour(x, y, pixelTexture);
 		}
 	}
-
+	
 	// rasterize bottom triangle with textures
 	for (int y = canvasVertices[1].y, i = 0; y < canvasVertices[2].y; y++, i++) {
 		for (int x = std::floor(interpolations.leftBottom[i]); x < std::ceil(interpolations.rightBottom[i]); x++) {
@@ -183,10 +185,13 @@ int main(int argc, char *argv[]) {
 	triangle.v2().texturePoint = TexturePoint(65, 330);
 	TextureMap textures = TextureMap("texture.ppm");
 
+	FileReader fr;
+	fr.readMTLFile("cornell-box.mtl");
+	fr.readOBJFile("cornell-box.obj", 0.35);
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window);
-		drawRasterizedTriangle(window, triangle, textures);
+		//drawRasterizedTriangle(window, triangle, textures);
 		//drawRasterizedTriangle(window, CanvasTriangle(CanvasPoint(WIDTH / 3, HEIGHT / 2), CanvasPoint((WIDTH * 2) / 3, HEIGHT / 3), CanvasPoint(WIDTH /2, 300)), Colour(40, 200, 40));
 		//draw(window);
 		/*drawLine(window, CanvasPoint(0, 0), CanvasPoint(WIDTH / 2, HEIGHT / 2), Colour(255, 255, 255));
