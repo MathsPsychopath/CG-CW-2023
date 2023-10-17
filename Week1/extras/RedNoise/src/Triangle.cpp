@@ -44,18 +44,18 @@ void Triangle::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle tria
 
 	// rasterize top triangle
 	uint32_t pixelColor = (255 << 24) + (int(color.red) << 16) + (int(color.green) << 8) + int(color.blue);
-	for (int y = vertices[0].y, i = 0; y < vertices[1].y; y++, i++) {
+	for (int y = std::floor(vertices[0].y), i = 0; y < std::floor(vertices[1].y); y++, i++) {
 		for (int x = std::floor(interpolations.topLeft[i]); x < std::ceil(interpolations.topRight[i]); x++) {
 			window.setPixelColour(x, y, pixelColor);
 		}
 	}
 	// rasterize bottom triangle
-	for (int y = vertices[1].y, i = 0; y < vertices[2].y; y++, i++) {
+	for (int y = std::floor(vertices[1].y), i = 0; y < std::floor(vertices[2].y); y++, i++) {
 		for (int x = std::floor(interpolations.leftBottom[i]); x < std::ceil(interpolations.rightBottom[i]); x++) {
 			window.setPixelColour(x, y, pixelColor);
 		}
 	}
-	drawStrokedTriangle(window, triangle, Colour(255, 255, 255));
+	//drawStrokedTriangle(window, triangle, Colour(255, 255, 255));
 }
 
 uint32_t Triangle::getTexture(BarycentricCoordinates coordinates, std::array<CanvasPoint, 3> sortedVertices, TextureMap textures){

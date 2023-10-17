@@ -41,14 +41,14 @@ void drawPointCloud(DrawingWindow& window, glm::vec3 cameraPosition, std::unorde
 	}
 }
 
-void drawWireframe(DrawingWindow& window, glm::vec3 cameraPosition, std::vector<ModelTriangle> objects) {
+void drawRaster(DrawingWindow& window, glm::vec3 cameraPosition, std::vector<ModelTriangle> objects) {
 	for (const ModelTriangle& object : objects) {
 		CanvasPoint first = Interpolate::canvasIntersection(cameraPosition, object.vertices[0], 2.0);
 		CanvasPoint second = Interpolate::canvasIntersection(cameraPosition, object.vertices[1], 2.0);
 		CanvasPoint third = Interpolate::canvasIntersection(cameraPosition, object.vertices[2], 2.0);
 
 		CanvasTriangle flattened(first, second, third);
-		Triangle::drawStrokedTriangle(window, flattened, Colour(255, 255, 255));
+		Triangle::drawRasterizedTriangle(window, flattened, object.colour);
 	}
 }
 
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
 		if (window.pollForInputEvents(event)) handleEvent(event, window);
 		//Triangle::drawRasterizedTriangle(window, triangle, textures);
 		//drawPointCloud(window, cameraPosition, fr.loadedVertices);
-		drawWireframe(window, cameraPosition, objects);
+		drawRaster(window, cameraPosition, objects);
 		//drawRasterizedTriangle(window, CanvasTriangle(CanvasPoint(WIDTH / 3, HEIGHT / 2), CanvasPoint((WIDTH * 2) / 3, HEIGHT / 3), CanvasPoint(WIDTH /2, 300)), Colour(40, 200, 40));
 		//draw(window);
 		/*drawLine(window, CanvasPoint(0, 0), CanvasPoint(WIDTH / 2, HEIGHT / 2), Colour(255, 255, 255));
