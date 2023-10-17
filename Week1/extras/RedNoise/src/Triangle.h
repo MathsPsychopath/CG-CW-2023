@@ -18,11 +18,11 @@ namespace Triangle {
 
 	void drawStrokedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colour color);
 
-	void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colour color);
+	void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colour color, std::vector<std::vector<float>>& zDepth);
 
 	uint32_t getTexture(BarycentricCoordinates coordinates, std::array<CanvasPoint, 3> sortedVertices, TextureMap textures);
 
-	void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, TextureMap textures);
+	void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, TextureMap textures, std::vector<std::vector<float>>& zDepth);
 
 	void drawRandomTriangle(DrawingWindow& window, bool isFilled);
 

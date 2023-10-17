@@ -34,28 +34,37 @@ void Triangle::drawStrokedTriangle(DrawingWindow& window, CanvasTriangle triangl
 	drawLine(window, triangle.v0(), triangle.v2(), color);
 }
 
-void Triangle::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colour color) {
+void Triangle::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colour color, std::vector<std::vector<float>>& zDepth) {
 	// translate vertices to interface type
 	std::array<CanvasPoint, 3> vertices = { triangle.v0(), triangle.v1(), triangle.v2() };
 
 	// sort triangle and interpolate
 	sortTriangle(vertices);
 	InterpolatedTriangle interpolations = Interpolate::triangle(vertices);
-
+	
 	// rasterize top triangle
 	uint32_t pixelColor = (255 << 24) + (int(color.red) << 16) + (int(color.green) << 8) + int(color.blue);
 	for (int y = std::floor(vertices[0].y), i = 0; y < std::floor(vertices[1].y); y++, i++) {
 		for (int x = std::floor(interpolations.topLeft[i]); x < std::ceil(interpolations.topRight[i]); x++) {
+			// use barycentric ratios to calculate zIndex
+			BarycentricCoordinates ratios = barycentric(vertices, glm::vec2(x, y));
+			float zIndex = 1 / (ratios.A * vertices[0].depth + ratios.B * vertices[1].depth + ratios.C * vertices[2].depth);
+			if (zDepth[y][x] < zIndex) continue;
 			window.setPixelColour(x, y, pixelColor);
+			zDepth[y][x] = zIndex;
 		}
 	}
 	// rasterize bottom triangle
 	for (int y = std::floor(vertices[1].y), i = 0; y < std::floor(vertices[2].y); y++, i++) {
 		for (int x = std::floor(interpolations.leftBottom[i]); x < std::ceil(interpolations.rightBottom[i]); x++) {
+			// interpolate z values
+			BarycentricCoordinates ratios = barycentric(vertices, glm::vec2(x, y));
+			float zIndex = 1 / (ratios.A * vertices[0].depth + ratios.B * vertices[1].depth + ratios.C * vertices[2].depth);
+			if (zDepth[y][x] < zIndex) continue;
 			window.setPixelColour(x, y, pixelColor);
+			zDepth[y][x] = zIndex;
 		}
 	}
-	//drawStrokedTriangle(window, triangle, Colour(255, 255, 255));
 }
 
 uint32_t Triangle::getTexture(BarycentricCoordinates coordinates, std::array<CanvasPoint, 3> sortedVertices, TextureMap textures){
@@ -72,7 +81,7 @@ uint32_t Triangle::getTexture(BarycentricCoordinates coordinates, std::array<Can
 	return textures.pixels[std::floor(textureCoordinate.x) + std::floor(textureCoordinate.y) * width];
 }
 
-void Triangle::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, TextureMap textures) {
+void Triangle::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, TextureMap textures, std::vector<std::vector<float>>& zDepth) {
 	// translate vertices to interface type
 	std::array<CanvasPoint, 3> canvasVertices = { triangle.v0(), triangle.v1(), triangle.v2() };
 
@@ -87,7 +96,10 @@ void Triangle::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle tria
 			glm::vec2 currentVertex(x, y);
 			BarycentricCoordinates ratios = barycentric(canvasVertices, currentVertex);
 			uint32_t pixelTexture = getTexture(ratios, canvasVertices, textures);
+			float zIndex = 1 / (ratios.A * canvasVertices[0].depth + ratios.B * canvasVertices[1].depth + ratios.C * canvasVertices[2].depth);
+			if (zDepth[y][x] < zIndex) continue;
 			window.setPixelColour(x, y, pixelTexture);
+			zDepth[y][x] = zIndex;
 		}
 	}
 
@@ -97,23 +109,26 @@ void Triangle::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle tria
 			glm::vec2 currentVertex(x, y);
 			BarycentricCoordinates ratios = barycentric(canvasVertices, currentVertex);
 			uint32_t pixelTexture = getTexture(ratios, canvasVertices, textures);
+			float zIndex = 1 / (ratios.A * canvasVertices[0].depth + ratios.B * canvasVertices[1].depth + ratios.C * canvasVertices[2].depth);
+			if (zDepth[y][x] < zIndex) continue;
 			window.setPixelColour(x, y, pixelTexture);
+			zDepth[y][x] = zIndex;
 		}
 	}
 }
 
-void Triangle::drawRandomTriangle(DrawingWindow& window, bool isFilled){
-	Colour color = Colour(rand() % 256, rand() % 256, rand() % 256);
-	CanvasPoint vertex1 = CanvasPoint(rand() % WIDTH, rand() % HEIGHT);
-	CanvasPoint vertex2 = CanvasPoint(rand() % WIDTH, rand() % HEIGHT);
-	CanvasPoint vertex3 = CanvasPoint(rand() % WIDTH, rand() % HEIGHT);
-	if (isFilled) {
-		drawRasterizedTriangle(window, CanvasTriangle(vertex1, vertex2, vertex3), color);
-	}
-	else {
-		drawStrokedTriangle(window, CanvasTriangle(vertex1, vertex2, vertex3), color);
-	}
-}
+//void Triangle::drawRandomTriangle(DrawingWindow& window, bool isFilled){
+//	Colour color = Colour(rand() % 256, rand() % 256, rand() % 256);
+//	CanvasPoint vertex1 = CanvasPoint(rand() % WIDTH, rand() % HEIGHT, rand());
+//	CanvasPoint vertex2 = CanvasPoint(rand() % WIDTH, rand() % HEIGHT);
+//	CanvasPoint vertex3 = CanvasPoint(rand() % WIDTH, rand() % HEIGHT);
+//	if (isFilled) {
+//		drawRasterizedTriangle(window, CanvasTriangle(vertex1, vertex2, vertex3), color);
+//	}
+//	else {
+//		drawStrokedTriangle(window, CanvasTriangle(vertex1, vertex2, vertex3), color);
+//	}
+//}
 
 BarycentricCoordinates Triangle::barycentric(const std::array<CanvasPoint, 3>& sortedVertices, glm::vec2 encodedVertex) {
 	CanvasPoint A = sortedVertices[0];

@@ -62,7 +62,12 @@ CanvasPoint Interpolate::canvasIntersection(glm::vec3 cameraPosition, glm::vec3 
 	float u = focalLength * (displacement.x / displacement.z) * scaleFactor + float(WIDTH) / 2;
 	
 	float v = focalLength * (displacement.y / displacement.z) * scaleFactor + float(HEIGHT) / 2;
+	// fixes horizontal flip
+	u = WIDTH - u;
+	return CanvasPoint(u,v, displacement.z);
+}
 
-	return CanvasPoint(u,v);
+void Interpolate::zDepth(CanvasTriangle interpolateTarget, std::vector<std::vector<float>>& depthMap){
+	// 
 }
 

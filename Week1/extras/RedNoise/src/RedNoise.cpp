@@ -33,7 +33,6 @@ void draw(DrawingWindow &window) {
 }
 
 void drawPointCloud(DrawingWindow& window, glm::vec3 cameraPosition, std::unordered_map<std::string, glm::vec3> loadedVertices) {
-
 	for (const auto& pair : loadedVertices) {
 		CanvasPoint point = Interpolate::canvasIntersection(cameraPosition, pair.second, 2.0);
 		uint32_t color = (255 << 24) + (255 << 16) + (255 << 8) + 255;
@@ -42,13 +41,14 @@ void drawPointCloud(DrawingWindow& window, glm::vec3 cameraPosition, std::unorde
 }
 
 void drawRaster(DrawingWindow& window, glm::vec3 cameraPosition, std::vector<ModelTriangle> objects) {
+	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
 	for (const ModelTriangle& object : objects) {
 		CanvasPoint first = Interpolate::canvasIntersection(cameraPosition, object.vertices[0], 2.0);
 		CanvasPoint second = Interpolate::canvasIntersection(cameraPosition, object.vertices[1], 2.0);
 		CanvasPoint third = Interpolate::canvasIntersection(cameraPosition, object.vertices[2], 2.0);
 
 		CanvasTriangle flattened(first, second, third);
-		Triangle::drawRasterizedTriangle(window, flattened, object.colour);
+		Triangle::drawRasterizedTriangle(window, flattened, object.colour, zDepth);
 	}
 }
 
@@ -58,14 +58,14 @@ void handleEvent(SDL_Event event, DrawingWindow &window) {
 		else if (event.key.keysym.sym == SDLK_RIGHT) std::cout << "RIGHT" << std::endl;
 		else if (event.key.keysym.sym == SDLK_UP) std::cout << "UP" << std::endl;
 		else if (event.key.keysym.sym == SDLK_DOWN) std::cout << "DOWN" << std::endl;
-		else if (event.key.keysym.sym == SDLK_u) {
+		/*else if (event.key.keysym.sym == SDLK_u) {
 			Triangle::drawRandomTriangle(window, false);
 			std::cout << "Drew Stroked Triangle" << std::endl;
-		}
-		else if (event.key.keysym.sym == SDLK_f) {
+		}*/
+		/*else if (event.key.keysym.sym == SDLK_f) {
 			Triangle::drawRandomTriangle(window, true);
 			std::cout << "Drew Filled Triangle" << std::endl;
-		}
+		}*/
 	} else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
