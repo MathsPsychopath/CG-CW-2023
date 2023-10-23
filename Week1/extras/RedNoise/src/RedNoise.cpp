@@ -5,6 +5,7 @@
 #include "FileReader.h"
 #include "Triangle.h"
 #include "Constants.h"
+#include "Camera.h"
 
 void draw(DrawingWindow &window) {
 	window.clearPixels();
@@ -32,32 +33,37 @@ void draw(DrawingWindow &window) {
 	}
 }
 
-void drawPointCloud(DrawingWindow& window, glm::vec3 cameraPosition, std::unordered_map<std::string, glm::vec3> loadedVertices) {
+void drawPointCloud(DrawingWindow& window, Camera &camera, std::unordered_map<std::string, glm::vec3> loadedVertices) {
 	for (const auto& pair : loadedVertices) {
-		CanvasPoint point = Interpolate::canvasIntersection(cameraPosition, pair.second, 2.0);
+		CanvasPoint point = Interpolate::canvasIntersection(camera, pair.second, 2.0);
 		uint32_t color = (255 << 24) + (255 << 16) + (255 << 8) + 255;
 		window.setPixelColour(point.x, point.y, color);
 	}
 }
 
-void drawRaster(DrawingWindow& window, glm::vec3 cameraPosition, std::vector<ModelTriangle> objects) {
+void drawRaster(DrawingWindow& window, Camera &camera, std::vector<ModelTriangle> objects) {
+	window.clearPixels();
 	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
 	for (const ModelTriangle& object : objects) {
-		CanvasPoint first = Interpolate::canvasIntersection(cameraPosition, object.vertices[0], 2.0);
-		CanvasPoint second = Interpolate::canvasIntersection(cameraPosition, object.vertices[1], 2.0);
-		CanvasPoint third = Interpolate::canvasIntersection(cameraPosition, object.vertices[2], 2.0);
+		CanvasPoint first = Interpolate::canvasIntersection(camera, object.vertices[0], 2.0);
+		CanvasPoint second = Interpolate::canvasIntersection(camera, object.vertices[1], 2.0);
+		CanvasPoint third = Interpolate::canvasIntersection(camera, object.vertices[2], 2.0);
 
 		CanvasTriangle flattened(first, second, third);
 		Triangle::drawRasterizedTriangle(window, flattened, object.colour, zDepth);
 	}
 }
 
-void handleEvent(SDL_Event event, DrawingWindow &window) {
+void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera) {
 	if (event.type == SDL_KEYDOWN) {
-		if (event.key.keysym.sym == SDLK_LEFT) std::cout << "LEFT" << std::endl;
-		else if (event.key.keysym.sym == SDLK_RIGHT) std::cout << "RIGHT" << std::endl;
-		else if (event.key.keysym.sym == SDLK_UP) std::cout << "UP" << std::endl;
+		if (event.key.keysym.sym == SDLK_LEFT) camera.rotate(0, -0.1);
+		else if (event.key.keysym.sym == SDLK_RIGHT) camera.rotate(0,0.1);
+		else if (event.key.keysym.sym == SDLK_UP) std::cout << "UP" << std::endl; // these last two sound like z axis
 		else if (event.key.keysym.sym == SDLK_DOWN) std::cout << "DOWN" << std::endl;
+		else if (event.key.keysym.sym == SDLK_w) camera.translate(glm::vec3(0, 0.1, 0));
+		else if (event.key.keysym.sym == SDLK_a) camera.translate(glm::vec3(-0.1,0,0));
+		else if (event.key.keysym.sym == SDLK_s) camera.translate(glm::vec3(0,-0.1,0));
+		else if (event.key.keysym.sym == SDLK_d) camera.translate(glm::vec3(0.1,0,0));
 		/*else if (event.key.keysym.sym == SDLK_u) {
 			Triangle::drawRandomTriangle(window, false);
 			std::cout << "Drew Stroked Triangle" << std::endl;
@@ -82,7 +88,7 @@ int main(int argc, char *argv[]) {
 	triangle.v2().texturePoint = TexturePoint(65, 330);
 	TextureMap textures = TextureMap("texture.ppm");
 
-	glm::vec3 cameraPosition(0.0, 0.0, 4.0);
+	Camera camera(0.0, 0.0, 4.0);
 
 	FileReader fr;
 	fr.readMTLFile("cornell-box.mtl");
@@ -90,16 +96,11 @@ int main(int argc, char *argv[]) {
 
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
-		if (window.pollForInputEvents(event)) handleEvent(event, window);
+		if (window.pollForInputEvents(event)) handleEvent(event, window, camera);
 		//Triangle::drawRasterizedTriangle(window, triangle, textures);
 		//drawPointCloud(window, cameraPosition, fr.loadedVertices);
-		drawRaster(window, cameraPosition, objects);
-		//drawRasterizedTriangle(window, CanvasTriangle(CanvasPoint(WIDTH / 3, HEIGHT / 2), CanvasPoint((WIDTH * 2) / 3, HEIGHT / 3), CanvasPoint(WIDTH /2, 300)), Colour(40, 200, 40));
-		//draw(window);
-		/*drawLine(window, CanvasPoint(0, 0), CanvasPoint(WIDTH / 2, HEIGHT / 2), Colour(255, 255, 255));
-		drawLine(window, CanvasPoint(WIDTH - 1, 0), CanvasPoint(WIDTH / 2, HEIGHT / 2), Colour(255, 255, 255));
-		drawLine(window, CanvasPoint(WIDTH /2, 0), CanvasPoint(WIDTH / 2, HEIGHT - 1), Colour(255, 255, 255));
-		drawLine(window, CanvasPoint(WIDTH / 3, HEIGHT / 2), CanvasPoint((WIDTH * 2) / 3, HEIGHT / 2), Colour(255, 255, 255));*/
+		drawRaster(window, camera, objects);
+		
 
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
 		window.renderFrame();

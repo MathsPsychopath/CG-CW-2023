@@ -6,6 +6,7 @@
 #include <CanvasPoint.h>
 #include "Constants.h"
 #include <CanvasTriangle.h>
+#include "Camera.h"
 
 struct InterpolatedTriangle {
 	std::vector<float> topLeft;
@@ -25,7 +26,7 @@ namespace Interpolate {
 	/// <returns>Struct pointing to interpolated values</returns>
 	InterpolatedTriangle triangle(const std::array<CanvasPoint, 3>& sortedVertices);
 
-	CanvasPoint canvasIntersection(glm::vec3 cameraPosition, glm::vec3 vertexPosition, float focalLength);
+	CanvasPoint canvasIntersection(Camera &camera, glm::vec3 vertexPosition, float focalLength);
 
 	void zDepth(CanvasTriangle interpolateTarget, std::vector<std::vector<float>>& depthMap);
 };

@@ -43,7 +43,6 @@ std::vector<ModelTriangle> FileReader::readOBJFile(std::string filename, float s
 				this->loadedVertices[tokens[3]], 
 				currentColor
 			);
-			std::cout << parsed << std::endl;
 			output.push_back(parsed);
 		}
 		else if (identifier == "usemtl") {

@@ -52,10 +52,10 @@ InterpolatedTriangle Interpolate::triangle(const std::array<CanvasPoint, 3>& sor
 	return output;
 }
 
-CanvasPoint Interpolate::canvasIntersection(glm::vec3 cameraPosition, glm::vec3 vertexPosition, float focalLength) {
+CanvasPoint Interpolate::canvasIntersection(Camera &camera, glm::vec3 vertexPosition, float focalLength) {
 
 	//glm::vec3 displacement = cameraPosition- vertexPosition;
-	glm::vec3 displacement = vertexPosition - cameraPosition;
+	glm::vec3 displacement = vertexPosition - camera.cameraPosition;
 
 	int scaleFactor = 180;
 
@@ -66,8 +66,3 @@ CanvasPoint Interpolate::canvasIntersection(glm::vec3 cameraPosition, glm::vec3 
 	u = WIDTH - u;
 	return CanvasPoint(u,v, displacement.z);
 }
-
-void Interpolate::zDepth(CanvasTriangle interpolateTarget, std::vector<std::vector<float>>& depthMap){
-	// 
-}
-
