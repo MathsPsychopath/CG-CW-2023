@@ -2,6 +2,7 @@
 #include "Constants.h"
 #include <vector>
 #include <glm/glm.hpp>
+#include <iostream>
 
 class Camera {
 public:
@@ -13,4 +14,5 @@ public:
 
 	void rotate(float xAnticlockwiseDegree, float yAnticlockwiseDegree);
 
+	glm::mat3 lookAt(glm::vec3 target);
 };

@@ -7,32 +7,6 @@
 #include "Constants.h"
 #include "Camera.h"
 
-void draw(DrawingWindow &window) {
-	window.clearPixels();
-	glm::vec3 topLeft(255, 0, 0);
-	glm::vec3 topRight(0, 0, 255);
-	glm::vec3 bottomRight(0, 255, 0);
-	glm::vec3 bottomLeft(255, 255, 0);
-
-	std::vector<glm::vec3> startColumnInterpolation = 
-		Interpolate::threeElementValues(topLeft, bottomLeft, window.height);
-	std::vector<glm::vec3> endColumnInterpolation =
-		Interpolate::threeElementValues(topRight, bottomRight, window.height);
-
-	for (size_t y = 0; y < window.height; y++) {
-		std::vector<glm::vec3> rowInterpolation = 
-			Interpolate::threeElementValues(startColumnInterpolation[y], endColumnInterpolation[y], window.width);
-		for (size_t x = 0; x < window.width; x++) {
-			glm::vec3 currentPixel = rowInterpolation[x];
-			float red = currentPixel.x;
-			float green = currentPixel.y;
-			float blue = currentPixel.z;
-			uint32_t colour = (255 << 24) + (int(red) << 16) + (int(green) << 8) + int(blue);
-			window.setPixelColour(x, y, colour);
-		}
-	}
-}
-
 void drawPointCloud(DrawingWindow& window, Camera &camera, std::unordered_map<std::string, glm::vec3> loadedVertices) {
 	for (const auto& pair : loadedVertices) {
 		CanvasPoint point = Interpolate::canvasIntersection(camera, pair.second, 2.0);
@@ -41,13 +15,15 @@ void drawPointCloud(DrawingWindow& window, Camera &camera, std::unordered_map<st
 	}
 }
 
-void drawRaster(DrawingWindow& window, Camera &camera, std::vector<ModelTriangle> objects) {
+void draw(DrawingWindow& window, Camera &camera, std::vector<ModelTriangle> objects) {
 	window.clearPixels();
+	//camera.rotate(0, 0.01);
+	glm::mat3 viewMatrix = camera.lookAt({ 0,0,0 });
 	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
 	for (const ModelTriangle& object : objects) {
-		CanvasPoint first = Interpolate::canvasIntersection(camera, object.vertices[0], 2.0);
-		CanvasPoint second = Interpolate::canvasIntersection(camera, object.vertices[1], 2.0);
-		CanvasPoint third = Interpolate::canvasIntersection(camera, object.vertices[2], 2.0);
+		CanvasPoint first = Interpolate::canvasIntersection(camera, object.vertices[0], 2.0, viewMatrix);
+		CanvasPoint second = Interpolate::canvasIntersection(camera, object.vertices[1], 2.0, viewMatrix);
+		CanvasPoint third = Interpolate::canvasIntersection(camera, object.vertices[2], 2.0, viewMatrix);
 
 		CanvasTriangle flattened(first, second, third);
 		Triangle::drawRasterizedTriangle(window, flattened, object.colour, zDepth);
@@ -99,8 +75,7 @@ int main(int argc, char *argv[]) {
 		if (window.pollForInputEvents(event)) handleEvent(event, window, camera);
 		//Triangle::drawRasterizedTriangle(window, triangle, textures);
 		//drawPointCloud(window, cameraPosition, fr.loadedVertices);
-		drawRaster(window, camera, objects);
-		
+		draw(window, camera, objects);
 
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
 		window.renderFrame();

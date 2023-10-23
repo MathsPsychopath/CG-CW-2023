@@ -45,8 +45,9 @@ void Triangle::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle tria
 	// rasterize top triangle
 	uint32_t pixelColor = (255 << 24) + (int(color.red) << 16) + (int(color.green) << 8) + int(color.blue);
 	for (int y = std::floor(vertices[0].y), i = 0; y < std::floor(vertices[1].y); y++, i++) {
+		if (y >= HEIGHT || y < 0) continue;
 		for (int x = std::floor(interpolations.topLeft[i]); x < std::ceil(interpolations.topRight[i]); x++) {
-			if (y < 0 || x < 0 || y >= HEIGHT || x >= WIDTH) continue;
+			if (x < 0 || x >= WIDTH) continue;
 			// use barycentric ratios to calculate zIndex
 			BarycentricCoordinates ratios = barycentric(vertices, glm::vec2(x, y));
 			float zIndex = 1 / (ratios.A * vertices[0].depth + ratios.B * vertices[1].depth + ratios.C * vertices[2].depth);
@@ -57,8 +58,9 @@ void Triangle::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle tria
 	}
 	// rasterize bottom triangle
 	for (int y = std::floor(vertices[1].y), i = 0; y < std::floor(vertices[2].y); y++, i++) {
+		if (y >= HEIGHT || y < 0) continue;
 		for (int x = std::floor(interpolations.leftBottom[i]); x < std::ceil(interpolations.rightBottom[i]); x++) {
-			if (y < 0 || x < 0 || y >= HEIGHT || x >= WIDTH) continue;
+			if (x < 0 || x >= WIDTH) continue;
 			// interpolate z values
 			BarycentricCoordinates ratios = barycentric(vertices, glm::vec2(x, y));
 			float zIndex = 1 / (ratios.A * vertices[0].depth + ratios.B * vertices[1].depth + ratios.C * vertices[2].depth);
@@ -95,7 +97,7 @@ void Triangle::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle tria
 	// rasterize top triangle with textures
 	for (int y = canvasVertices[0].y, i = 0; y < canvasVertices[1].y; y++, i++) {
 		for (int x = std::floor(interpolations.topLeft[i]); x < std::ceil(interpolations.topRight[i]); x++) {
-			if (y < 0 || x < 0 || y > HEIGHT || x > WIDTH) continue;
+			if (y < 0 || x < 0 || y >= HEIGHT || x >= WIDTH) continue;
 			glm::vec2 currentVertex(x, y);
 			BarycentricCoordinates ratios = barycentric(canvasVertices, currentVertex);
 			uint32_t pixelTexture = getTexture(ratios, canvasVertices, textures);
@@ -109,7 +111,7 @@ void Triangle::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle tria
 	// rasterize bottom triangle with textures
 	for (int y = canvasVertices[1].y, i = 0; y < canvasVertices[2].y; y++, i++) {
 		for (int x = std::floor(interpolations.leftBottom[i]); x < std::ceil(interpolations.rightBottom[i]); x++) {
-			if (y < 0 || x < 0 || y > HEIGHT || x > WIDTH) continue;
+			if (y < 0 || x < 0 || y >= HEIGHT || x >= WIDTH) continue;
 			glm::vec2 currentVertex(x, y);
 			BarycentricCoordinates ratios = barycentric(canvasVertices, currentVertex);
 			uint32_t pixelTexture = getTexture(ratios, canvasVertices, textures);

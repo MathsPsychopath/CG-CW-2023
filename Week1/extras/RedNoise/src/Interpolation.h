@@ -26,8 +26,6 @@ namespace Interpolate {
 	/// <returns>Struct pointing to interpolated values</returns>
 	InterpolatedTriangle triangle(const std::array<CanvasPoint, 3>& sortedVertices);
 
-	CanvasPoint canvasIntersection(Camera &camera, glm::vec3 vertexPosition, float focalLength);
-
-	void zDepth(CanvasTriangle interpolateTarget, std::vector<std::vector<float>>& depthMap);
+	CanvasPoint canvasIntersection(Camera &camera, glm::vec3 vertexPosition, float focalLength, const glm::mat3& viewMatrix = glm::mat3(1.0));
 };
 
