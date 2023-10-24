@@ -6,6 +6,7 @@
 #include "Triangle.h"
 #include "Constants.h"
 #include "Camera.h"
+#include <glm/gtx/string_cast.hpp>
 
 void drawPointCloud(DrawingWindow& window, Camera &camera, std::unordered_map<std::string, glm::vec3> loadedVertices) {
 	for (const auto& pair : loadedVertices) {
@@ -17,13 +18,13 @@ void drawPointCloud(DrawingWindow& window, Camera &camera, std::unordered_map<st
 
 void draw(DrawingWindow& window, Camera &camera, std::vector<ModelTriangle> objects) {
 	window.clearPixels();
-	//camera.rotate(0, 0.01);
-	glm::mat3 viewMatrix = camera.lookAt({ 0,0,0 });
+	camera.rotate(0, 0.1);
+	glm::mat4 viewMatrix = camera.lookAt({ 0,0,0 }); 
 	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
 	for (const ModelTriangle& object : objects) {
-		CanvasPoint first = Interpolate::canvasIntersection(camera, object.vertices[0], 2.0, viewMatrix);
-		CanvasPoint second = Interpolate::canvasIntersection(camera, object.vertices[1], 2.0, viewMatrix);
-		CanvasPoint third = Interpolate::canvasIntersection(camera, object.vertices[2], 2.0, viewMatrix);
+		CanvasPoint first = Interpolate::canvasIntersection(camera, object.vertices[0], 180, viewMatrix);
+		CanvasPoint second = Interpolate::canvasIntersection(camera, object.vertices[1], 180, viewMatrix);
+		CanvasPoint third = Interpolate::canvasIntersection(camera, object.vertices[2], 180, viewMatrix);
 
 		CanvasTriangle flattened(first, second, third);
 		Triangle::drawRasterizedTriangle(window, flattened, object.colour, zDepth);

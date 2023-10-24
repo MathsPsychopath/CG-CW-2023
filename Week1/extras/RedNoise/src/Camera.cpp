@@ -10,35 +10,27 @@ void Camera::translate(glm::vec3 movementVector) {
 }
 
 void Camera::rotate(float xAnticlockwiseDegree, float yAnticlockwiseDegree) {
+	const float xRad = glm::radians(xAnticlockwiseDegree);
+	const float yRad = glm::radians(yAnticlockwiseDegree);
+
 	const glm::mat3 xRotationMatrix = { 
 		1.0, 0.0, 0.0,
-		0.0, std::cos(xAnticlockwiseDegree), std::sin(xAnticlockwiseDegree),
-		0.0, -std::sin(xAnticlockwiseDegree), std::cos(xAnticlockwiseDegree),
+		0.0, std::cos(xRad), std::sin(xRad),
+		0.0, -std::sin(xRad), std::cos(xRad),
 	};
 	
 	const glm::mat3 yRotationMatrix = {
-		std::cos(yAnticlockwiseDegree), 0.0, -std::sin(yAnticlockwiseDegree),
+		std::cos(yRad), 0.0, -std::sin(yRad),
 		0.0, 1.0, 0.0,
-		std::sin(yAnticlockwiseDegree), 0.0, std::cos(yAnticlockwiseDegree),
+		std::sin(yRad), 0.0, std::cos(yRad),
 	};
 
 	this->cameraPosition = xRotationMatrix*this->cameraPosition;
 	this->cameraPosition = yRotationMatrix*this->cameraPosition;
 }
 
-glm::mat3 Camera::lookAt(glm::vec3 target) {
-	// forward vector
-	const glm::vec3 forward = glm::normalize(this->cameraPosition - target);
-
-	// get right by cross product of vertical (0,1,0) and forward
-	const glm::vec3 right = glm::normalize(glm::cross(glm::vec3(0, 1, 0), forward));
-
-	// get up by cross product of right and forward 
-	const glm::vec3 up = glm::normalize(glm::cross(forward, right));
-	/*std::cout << "up (invariant) " <<up.x << ", " << up.y << ", " << up.z << std::endl;
-	std::cout << "right (invariant) " <<right.x << ", " << right.y << ", " << right.z << std::endl;
-	std::cout << "forward (variant) " << forward.x << ", " << forward.y << ", " << forward.z << std::endl;*/
-
-	glm::mat3 viewMatrix = glm::mat3(right, up, -forward);
+glm::mat4 Camera::lookAt(glm::vec3 target) {
+	// calculates the forward, right, up vectors given the target and the world vertical
+	glm::mat4 viewMatrix = glm::lookAt(this->cameraPosition, target, glm::vec3(0, 1, 0));
 	return viewMatrix;
 }

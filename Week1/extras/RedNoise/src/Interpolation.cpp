@@ -52,19 +52,20 @@ InterpolatedTriangle Interpolate::triangle(const std::array<CanvasPoint, 3>& sor
 	return output;
 }
 
-CanvasPoint Interpolate::canvasIntersection(Camera &camera, glm::vec3 vertexPosition, float focalLength, const glm::mat3& viewMatrix) {
+CanvasPoint Interpolate::canvasIntersection(Camera &camera, glm::vec3 vertexPosition, float focalLength, const glm::mat4& viewMatrix) {
 	
 	// apply any view matrices supplied
-	//vertexPosition = viewMatrix * vertexPosition;
+	glm::vec4 position = viewMatrix * glm::vec4(vertexPosition, 1);
 
-	glm::vec3 displacement = vertexPosition - camera.cameraPosition;
-
-	int scaleFactor = 180;
-
-	float u = focalLength * (displacement.x / displacement.z) * scaleFactor + float(WIDTH) / 2;
+	glm::vec3 deviceCoordinates = glm::vec3(position) / position.w;
+	float heightFocalLength = focalLength / (float)HEIGHT;
+	float widthFocalLength = focalLength / (float)WIDTH;
 	
-	float v = focalLength * (displacement.y / displacement.z) * scaleFactor + float(HEIGHT) / 2;
-	// fixes horizontal flip
+	float u = (deviceCoordinates.x * 0.5 * widthFocalLength + 0.5) * WIDTH;
+	float v = (deviceCoordinates.y * 0.5 * heightFocalLength + 0.5) * HEIGHT;
+
+	// fixes horizontal flip and vertical flip
 	u = WIDTH - u;
-	return CanvasPoint(u,v, displacement.z);
+	v = HEIGHT - v;
+	return CanvasPoint(u,v, -deviceCoordinates.z);
 }
