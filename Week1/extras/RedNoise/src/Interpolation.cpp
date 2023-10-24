@@ -52,27 +52,19 @@ InterpolatedTriangle Interpolate::triangle(const std::array<CanvasPoint, 3>& sor
 	return output;
 }
 
-CanvasPoint Interpolate::canvasIntersection(Camera &camera, glm::vec3 vertexPosition, float focalLength, const glm::mat4& viewMatrix) {
+CanvasPoint Interpolate::canvasIntersection(Camera &camera, glm::vec3 vertexPosition, float focalLength, const glm::mat3& viewMatrix) {
 	
-	// add a perspective matrix to render the objects correctly
-	/*
-	* FOV - how zoomed in the view is
-	* aspect ratio - avoids stretches and distortions
-	* near - the distance from the camera to the canvas
-	* far - the further distance to render
-	*/
-	glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+	// find the displacement relative to the camera, 
+	// then get the position vector in terms of the camera's POV
+	const glm::vec3 displacement = camera.cameraPosition - vertexPosition;
+	const glm::vec3 adjustedVector = displacement * viewMatrix;
 
-	// apply any view matrices supplied
-	glm::vec4 position = perspective * viewMatrix * glm::vec4(vertexPosition, 1);
+	int scaleFactor = 180;
 
-	glm::vec3 deviceCoordinates = glm::vec3(position) / position.w;
-	
-	float u = (deviceCoordinates.x * 0.5 + 0.5) * WIDTH;
-	float v = (deviceCoordinates.y * 0.5 + 0.5) * HEIGHT;
+	float u = focalLength * (adjustedVector.x / adjustedVector.z) * scaleFactor + float(WIDTH) / 2;
 
-	// fixes horizontal flip and vertical flip
+	float v = focalLength * (adjustedVector.y / adjustedVector.z) * scaleFactor + float(HEIGHT) / 2;
+	// fixes horizontal flip
 	u = WIDTH - u;
-	v = HEIGHT - v;
-	return CanvasPoint(u,v, -deviceCoordinates.z);
+	return CanvasPoint(u, v, -adjustedVector.z);
 }

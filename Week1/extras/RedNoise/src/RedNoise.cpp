@@ -18,13 +18,13 @@ void drawPointCloud(DrawingWindow& window, Camera &camera, std::unordered_map<st
 
 void draw(DrawingWindow& window, Camera &camera, std::vector<ModelTriangle> objects) {
 	window.clearPixels();
-	camera.rotate(0, 1);
-	glm::mat4 viewMatrix = camera.lookAt({ 0,0,0 }); 
+	//camera.rotate(0, 1);
+	glm::mat3 viewMatrix = camera.lookAt({ 0,0,0 }); 
 	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
 	for (const ModelTriangle& object : objects) {
-		CanvasPoint first = Interpolate::canvasIntersection(camera, object.vertices[0], 180, viewMatrix);
-		CanvasPoint second = Interpolate::canvasIntersection(camera, object.vertices[1], 180, viewMatrix);
-		CanvasPoint third = Interpolate::canvasIntersection(camera, object.vertices[2], 180, viewMatrix);
+		CanvasPoint first = Interpolate::canvasIntersection(camera, object.vertices[0], 2.0, viewMatrix);
+		CanvasPoint second = Interpolate::canvasIntersection(camera, object.vertices[1], 2.0, viewMatrix);
+		CanvasPoint third = Interpolate::canvasIntersection(camera, object.vertices[2], 2.0, viewMatrix);
 
 		CanvasTriangle flattened(first, second, third);
 		Triangle::drawRasterizedTriangle(window, flattened, object.colour, zDepth);
@@ -33,8 +33,8 @@ void draw(DrawingWindow& window, Camera &camera, std::vector<ModelTriangle> obje
 
 void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera) {
 	if (event.type == SDL_KEYDOWN) {
-		if (event.key.keysym.sym == SDLK_LEFT) camera.rotate(0, -0.1);
-		else if (event.key.keysym.sym == SDLK_RIGHT) camera.rotate(0,0.1);
+		if (event.key.keysym.sym == SDLK_LEFT) camera.rotate(0, -1);
+		else if (event.key.keysym.sym == SDLK_RIGHT) camera.rotate(0,1);
 		else if (event.key.keysym.sym == SDLK_UP) std::cout << "UP" << std::endl; // these last two sound like z axis
 		else if (event.key.keysym.sym == SDLK_DOWN) std::cout << "DOWN" << std::endl;
 		else if (event.key.keysym.sym == SDLK_w) camera.translate(glm::vec3(0, 0.1, 0));

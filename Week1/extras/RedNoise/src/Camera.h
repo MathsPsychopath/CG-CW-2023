@@ -14,5 +14,5 @@ public:
 
 	void rotate(float xAnticlockwiseDegree, float yAnticlockwiseDegree);
 
-	glm::mat4 lookAt(glm::vec3 target);
+	glm::mat3 lookAt(glm::vec3 target);
 };
