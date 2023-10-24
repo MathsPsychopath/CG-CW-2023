@@ -18,7 +18,7 @@ void drawPointCloud(DrawingWindow& window, Camera &camera, std::unordered_map<st
 
 void draw(DrawingWindow& window, Camera &camera, std::vector<ModelTriangle> objects) {
 	window.clearPixels();
-	camera.rotate(0, 0.1);
+	camera.rotate(0, 1);
 	glm::mat4 viewMatrix = camera.lookAt({ 0,0,0 }); 
 	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
 	for (const ModelTriangle& object : objects) {

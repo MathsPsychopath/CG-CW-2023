@@ -54,15 +54,22 @@ InterpolatedTriangle Interpolate::triangle(const std::array<CanvasPoint, 3>& sor
 
 CanvasPoint Interpolate::canvasIntersection(Camera &camera, glm::vec3 vertexPosition, float focalLength, const glm::mat4& viewMatrix) {
 	
+	// add a perspective matrix to render the objects correctly
+	/*
+	* FOV - how zoomed in the view is
+	* aspect ratio - avoids stretches and distortions
+	* near - the distance from the camera to the canvas
+	* far - the further distance to render
+	*/
+	glm::mat4 perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+
 	// apply any view matrices supplied
-	glm::vec4 position = viewMatrix * glm::vec4(vertexPosition, 1);
+	glm::vec4 position = perspective * viewMatrix * glm::vec4(vertexPosition, 1);
 
 	glm::vec3 deviceCoordinates = glm::vec3(position) / position.w;
-	float heightFocalLength = focalLength / (float)HEIGHT;
-	float widthFocalLength = focalLength / (float)WIDTH;
 	
-	float u = (deviceCoordinates.x * 0.5 * widthFocalLength + 0.5) * WIDTH;
-	float v = (deviceCoordinates.y * 0.5 * heightFocalLength + 0.5) * HEIGHT;
+	float u = (deviceCoordinates.x * 0.5 + 0.5) * WIDTH;
+	float v = (deviceCoordinates.y * 0.5 + 0.5) * HEIGHT;
 
 	// fixes horizontal flip and vertical flip
 	u = WIDTH - u;
