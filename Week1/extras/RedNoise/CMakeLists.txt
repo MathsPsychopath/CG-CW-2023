@@ -35,7 +35,7 @@ add_executable(RedNoise
         libs/sdw/TextureMap.cpp
         libs/sdw/TexturePoint.cpp
         libs/sdw/Utils.cpp
-        src/RedNoise.cpp "src/Interpolation.h" "src/Interpolation.cpp" "src/FileReader.h" "src/FileReader.cpp" "src/Triangle.h" "src/Triangle.cpp" "src/Constants.h" "src/Camera.h" "src/Camera.cpp")
+        src/RedNoise.cpp   "src/FileReader.h" "src/FileReader.cpp"   "src/Constants.h" "src/Camera.h" "src/Camera.cpp" "src/Rasterize.h" "src/Rasterize.cpp" "src/Wireframe.h" "src/Wireframe.cpp")
 
 if (MSVC)
     target_compile_options(RedNoise

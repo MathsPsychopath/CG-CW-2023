@@ -3,18 +3,10 @@
 #include <fstream>
 #include <Colour.h>
 #include "FileReader.h"
-#include "Triangle.h"
 #include "Constants.h"
 #include "Camera.h"
 #include <glm/gtx/string_cast.hpp>
-
-void drawPointCloud(DrawingWindow& window, Camera &camera, std::unordered_map<std::string, glm::vec3> loadedVertices) {
-	for (const auto& pair : loadedVertices) {
-		CanvasPoint point = Interpolate::canvasIntersection(camera, pair.second, 2.0);
-		uint32_t color = (255 << 24) + (255 << 16) + (255 << 8) + 255;
-		window.setPixelColour(point.x, point.y, color);
-	}
-}
+#include "Rasterize.h"
 
 void draw(DrawingWindow& window, Camera &camera, std::vector<ModelTriangle> objects) {
 	window.clearPixels();
@@ -22,12 +14,12 @@ void draw(DrawingWindow& window, Camera &camera, std::vector<ModelTriangle> obje
 	glm::mat3 viewMatrix = camera.lookAt({ 0,0,0 }); 
 	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
 	for (const ModelTriangle& object : objects) {
-		CanvasPoint first = Interpolate::canvasIntersection(camera, object.vertices[0], 2.0, viewMatrix);
-		CanvasPoint second = Interpolate::canvasIntersection(camera, object.vertices[1], 2.0, viewMatrix);
-		CanvasPoint third = Interpolate::canvasIntersection(camera, object.vertices[2], 2.0, viewMatrix);
+		CanvasPoint first = Rasterize::canvasIntersection(camera, object.vertices[0], 2.0, viewMatrix);
+		CanvasPoint second = Rasterize::canvasIntersection(camera, object.vertices[1], 2.0, viewMatrix);
+		CanvasPoint third = Rasterize::canvasIntersection(camera, object.vertices[2], 2.0, viewMatrix);
 
 		CanvasTriangle flattened(first, second, third);
-		Triangle::drawRasterizedTriangle(window, flattened, object.colour, zDepth);
+		Rasterize::drawRasterizedTriangle(window, flattened, object.colour, zDepth);
 	}
 }
 
@@ -35,8 +27,8 @@ void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera) {
 	if (event.type == SDL_KEYDOWN) {
 		if (event.key.keysym.sym == SDLK_LEFT) camera.rotate(0, -1);
 		else if (event.key.keysym.sym == SDLK_RIGHT) camera.rotate(0,1);
-		else if (event.key.keysym.sym == SDLK_UP) std::cout << "UP" << std::endl; // these last two sound like z axis
-		else if (event.key.keysym.sym == SDLK_DOWN) std::cout << "DOWN" << std::endl;
+		else if (event.key.keysym.sym == SDLK_UP) camera.translate(glm::vec3(0,0,-0.1)); 
+		else if (event.key.keysym.sym == SDLK_DOWN) camera.translate(glm::vec3(0,0,0.1));
 		else if (event.key.keysym.sym == SDLK_w) camera.translate(glm::vec3(0, 0.1, 0));
 		else if (event.key.keysym.sym == SDLK_a) camera.translate(glm::vec3(-0.1,0,0));
 		else if (event.key.keysym.sym == SDLK_s) camera.translate(glm::vec3(0,-0.1,0));

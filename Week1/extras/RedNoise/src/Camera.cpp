@@ -1,5 +1,4 @@
 #include "Camera.h"
-#include <glm/gtc/matrix_transform.hpp>
 
 Camera::Camera(float x, float y, float z) {
 	this->cameraPosition = glm::vec3(x,y,z);
