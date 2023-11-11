@@ -131,7 +131,6 @@ void Rasterize::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle tri
 
 	// sort canvas triangle and interpolate
 	sortTriangle(canvasVertices);
-	std::cout << canvasVertices[0] << canvasVertices[1] << canvasVertices[2] << std::endl;
 	InterpolatedTriangle interpolations = Rasterize::triangle(canvasVertices);
 
 	// rasterize top triangle with textures
