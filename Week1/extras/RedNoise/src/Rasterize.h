@@ -28,16 +28,14 @@ namespace Rasterize {
 
 	// returns the 4 x-value interpolated edges of the divided triangle.
 	InterpolatedTriangle triangle(const std::array<CanvasPoint, 3>& sortedVertices);
-
-	// computes the canvas intersection of a triangle point wrt camera position
-	CanvasPoint canvasIntersection(Camera& camera, glm::vec3 vertexPosition, float focalLength, const glm::mat3& viewMatrix = glm::mat3(1.0));
-
+	
 	// rasterizes a solid color triangle
 	void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colour color, std::vector<std::vector<float>>& zDepth);
 
 	// rasterizes a textured triangle
 	void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, TextureMap textures, std::vector<std::vector<float>>& zDepth);
 
+	// computes the relative coordinates of each pixel in the triangle
 	BarycentricCoordinates barycentric(const std::array<CanvasPoint, 3>& sortedVertices, glm::vec2 encodedVertex);
 
 }

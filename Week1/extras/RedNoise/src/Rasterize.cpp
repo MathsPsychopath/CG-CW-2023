@@ -82,23 +82,6 @@ InterpolatedTriangle Rasterize::triangle(const std::array<CanvasPoint, 3>& sorte
 	return output;
 }
 
-CanvasPoint Rasterize::canvasIntersection(Camera& camera, glm::vec3 vertexPosition, float focalLength, const glm::mat3& viewMatrix) {
-
-	// find the displacement relative to the camera, 
-	// then get the position vector in terms of the camera's POV
-	const glm::vec3 displacement = camera.cameraPosition - vertexPosition;
-	const glm::vec3 adjustedVector = displacement * viewMatrix;
-
-	int scaleFactor = 180;
-
-	float u = focalLength * (adjustedVector.x / adjustedVector.z) * scaleFactor + float(WIDTH) / 2;
-
-	float v = focalLength * (adjustedVector.y / adjustedVector.z) * scaleFactor + float(HEIGHT) / 2;
-	// fixes horizontal flip
-	u = WIDTH - u;
-	return CanvasPoint(u, v, -adjustedVector.z);
-}
-
 void Rasterize::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colour color, std::vector<std::vector<float>>& zDepth) {
 	// translate vertices to interface type
 	std::array<CanvasPoint, 3> vertices = { triangle.v0(), triangle.v1(), triangle.v2() };

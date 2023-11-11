@@ -10,7 +10,9 @@ void Wireframe::drawLine(DrawingWindow& window, CanvasPoint start, CanvasPoint e
 	uint32_t pixelColor = (255 << 24) + (int(color.red) << 16) + (int(color.green) << 8) + int(color.blue);
 	for (int i = 0; i < stepCount; i++) {
 		int x = std::round(start.x + xStepSize * i);
+		if (x >= WIDTH || x < 0) continue;
 		int y = std::round(start.y + yStepSize * i);
+		if (y >= HEIGHT || y < 0) continue;
 		window.setPixelColour(x, y, pixelColor);
 	}
 }
@@ -21,11 +23,11 @@ void Wireframe::drawStrokedTriangle(DrawingWindow& window, CanvasTriangle triang
 	drawLine(window, triangle.v0(), triangle.v2(), color);
 }
 
-void Wireframe::drawPointCloud(DrawingWindow& window, Camera& camera, std::unordered_map<std::string, glm::vec3> loadedVertices) {
-	for (const auto& pair : loadedVertices) {
-		CanvasPoint point = canvasIntersection(camera, pair.second, 2.0);
+void Wireframe::drawCloudPoints(DrawingWindow& window, Camera& camera, std::vector<CanvasPoint> loadedVertices) {
+	for (const auto& vertex: loadedVertices) {
+		if (vertex.x < 0 || vertex.x >= WIDTH || vertex.y < 0 || vertex.y >= HEIGHT) continue;
 		uint32_t color = (255 << 24) + (255 << 16) + (255 << 8) + 255;
-		window.setPixelColour(point.x, point.y, color);
+		window.setPixelColour(vertex.x, vertex.y, color);
 	}
 }
 
@@ -44,4 +46,15 @@ CanvasPoint Wireframe::canvasIntersection(Camera& camera, glm::vec3 vertexPositi
 	// fixes horizontal flip
 	u = WIDTH - u;
 	return CanvasPoint(u, v, -adjustedVector.z);
+}
+
+void Wireframe::drawWireframe(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> objects) {
+	for (const ModelTriangle& object : objects) {
+		CanvasPoint first = canvasIntersection(camera, object.vertices[0], 2.0, glm::mat3(1.0));
+		CanvasPoint second = canvasIntersection(camera, object.vertices[1], 2.0, glm::mat3(1.0));
+		CanvasPoint third = canvasIntersection(camera, object.vertices[2], 2.0, glm::mat3(1.0));
+
+		CanvasTriangle flattened(first, second, third);
+		drawStrokedTriangle(window, flattened, Colour(255, 255, 255));
+	}
 }
