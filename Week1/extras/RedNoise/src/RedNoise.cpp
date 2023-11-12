@@ -42,7 +42,8 @@ void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> obje
 			}
 
 			glm::vec3 lightDirection = glm::normalize(lightPosition - intersection.intersectionPoint);
-			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(intersection.intersectionPoint, lightDirection, objects);
+			
+			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(intersection.intersectionPoint, lightDirection, objects, intersection.triangleIndex);
 			if (shadowIntersection.triangleIndex != -1) {
 
 				window.setPixelColour(x, y, 0xFF333333);
@@ -50,7 +51,6 @@ void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> obje
 			}
 			Colour color = intersection.intersectedTriangle.colour;
 			uint32_t pixelColor = (255 << 24) + (int(color.red) << 16) + (int(color.green) << 8) + int(color.blue);
-			//std::cout << pixelColor << " @ " << x << ", " << y << std::endl;
 			window.setPixelColour(x, y, pixelColor);
 		}
 	}
