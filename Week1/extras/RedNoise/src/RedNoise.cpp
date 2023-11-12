@@ -26,27 +26,23 @@ void drawInterpolationRenders(DrawingWindow& window, Camera &camera, std::vector
 }
 
 void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> objects) {
-	glm::mat3 viewMatrix = camera.lookAt({ 0,0,0 });
-	int scaleFactor = 180;
-	float focalLength = 2.0f;
+	window.clearPixels();
+	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
+
 	for (int y = 0; y < HEIGHT; y++) {
 		for (int x = 0; x < WIDTH; x++) {
 			// normalise the canvas coordinates into real world coordinates
+			glm::vec3 canvasPosition = Raytrace::getCanvasPosition(camera, CanvasPoint(x, y), inverseViewMatrix);
 
-			float normX = (x / (float(scaleFactor) * focalLength)) - float(WIDTH) * 2;
-			float normY = (y / (float(scaleFactor) * focalLength)) - float(HEIGHT) * 2;
+			glm::vec3 direction = glm::normalize(canvasPosition - camera.cameraPosition);
 
-
-			glm::vec3 displacement = glm::vec3( normX, normY, -1) * glm::inverse(viewMatrix);
-			glm::vec3 direction = glm::normalize(-displacement);
-			//glm::vec3 direction = glm::normalize(worldRay - camera.cameraPosition);
 			RayTriangleIntersection intersection = Raytrace::getClosestValidIntersection(camera.cameraPosition, direction, objects);
-
-			if (intersection.distanceFromCamera == std::numeric_limits<float>::max()) {
-				window.setPixelColour(x, y, 0);
+			if (intersection.triangleIndex == -1) {
 				continue;
 			}
+
 			Colour color = intersection.intersectedTriangle.colour;
+			std::cout << color << std::endl;
 			uint32_t pixelColor = (255 << 24) + (int(color.red) << 16) + (int(color.green) << 8) + int(color.blue);
 			window.setPixelColour(x, y, pixelColor);
 		}

@@ -4,6 +4,7 @@ RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPo
 	RayTriangleIntersection closest;
 	closest.distanceFromCamera = std::numeric_limits<float>::max();
 	int index = 0;
+	closest.triangleIndex = -1;
 	for (const auto& triangle : objects) {
 		glm::vec3 e0 = triangle.vertices[1] - triangle.vertices[0];
 		glm::vec3 e1 = triangle.vertices[2] - triangle.vertices[0];
@@ -15,17 +16,24 @@ RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPo
 		float v = possibleSolution.z; // distance along v2-v0 edge
 		
 		// assert validity check
-		std::cout << t << ", " << u << ", " << v << std::endl;
-
 		if (u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0 && u + v <= 1.0) {
 			// get the closest triangle to camera
-			if (t > closest.distanceFromCamera && t > 0) continue;
+			if (t > closest.distanceFromCamera || t < 0) continue;
 			closest.distanceFromCamera = t;
-			closest.triangleIndex = index;
+			closest.triangleIndex = index++;
 			closest.intersectedTriangle = triangle;
-			closest.intersectionPoint = triangle.vertices[0] + u * e0 + v * e1;
+			closest.intersectionPoint = cameraPosition + t * rayDirection;
 		}
-		index++;
 	}
 	return closest;
+}
+
+glm::vec3 Raytrace::getCanvasPosition(Camera& camera, CanvasPoint position, glm::mat3 inverseViewMatrix) {
+	int scaleFactor = 180;
+	float focalLength = 2.0f;
+	//position.x = WIDTH - position.x;
+	float realX = ((position.x + float(WIDTH) / 2) / (scaleFactor * focalLength));
+	float realY = ((position.y + float(HEIGHT) / 2) / (scaleFactor * focalLength));
+	glm::vec3 displacement = inverseViewMatrix * glm::vec3(realX, realY, -1);
+	return camera.cameraPosition + displacement;
 }
