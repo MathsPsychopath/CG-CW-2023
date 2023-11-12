@@ -6,8 +6,9 @@
 #include <glm/gtx/string_cast.hpp>
 #include "Rasterize.h"
 #include "Wireframe.h"
+#include "Raytrace.h"
 
-void draw(DrawingWindow& window, Camera &camera, std::vector<ModelTriangle> objects, RenderType type) {
+void drawInterpolationRenders(DrawingWindow& window, Camera &camera, std::vector<ModelTriangle> objects, RenderType type) {
 	window.clearPixels();
 	glm::mat3 viewMatrix = camera.lookAt({ 0,0,0 }); 
 	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
@@ -21,6 +22,38 @@ void draw(DrawingWindow& window, Camera &camera, std::vector<ModelTriangle> obje
 		else if (type == WIREFRAME) Wireframe::drawStrokedTriangle(window, flattened, Colour(255, 255, 255));
 		else if (type == RASTER) Rasterize::drawRasterizedTriangle(window, flattened, object.colour, zDepth);
 		
+	}
+}
+
+void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> objects) {
+	window.clearPixels();
+	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
+	glm::vec3 lightPosition = { 0, 0.75, 1.5 };
+	for (int y = 0; y < HEIGHT; y++) {
+		for (int x = 0; x < WIDTH; x++) {
+			// normalise the canvas coordinates into real world coordinates
+			glm::vec3 canvasPosition = Raytrace::getCanvasPosition(camera, CanvasPoint(x, y), inverseViewMatrix);
+
+			glm::vec3 direction = glm::normalize(camera.cameraPosition - canvasPosition);
+
+			RayTriangleIntersection intersection = Raytrace::getClosestValidIntersection(camera.cameraPosition, direction, objects);
+			if (intersection.triangleIndex == -1) {
+				continue;
+			}
+
+			glm::vec3 offsetPoint = intersection.intersectionPoint + 0.01f * intersection.intersectedTriangle.normal;
+			glm::vec3 lightDirection = glm::normalize(lightPosition - offsetPoint);
+			
+			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex);
+			Colour color = intersection.intersectedTriangle.colour;
+			if (shadowIntersection.triangleIndex != -1) {
+				uint32_t pixelColor = (255 << 24) + (int(color.red / 3) << 16) + (int(color.green / 3) << 8) + int(color.blue / 3);
+				window.setPixelColour(x, y, pixelColor);
+				continue;
+			}
+			uint32_t pixelColor = (255 << 24) + (int(color.red) << 16) + (int(color.green) << 8) + int(color.blue);
+			window.setPixelColour(x, y, pixelColor);
+		}
 	}
 }
 
@@ -68,14 +101,15 @@ int main(int argc, char *argv[]) {
 	FileReader fr;
 	fr.readMTLFile("cornell-box.mtl");
 	std::vector<ModelTriangle> objects = fr.readOBJFile("cornell-box.obj", 0.35);
-	RenderType type = RASTER;
+	RenderType type = RAYTRACE;
 
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, type);
 		//Triangle::drawRasterizedTriangle(window, triangle, textures);
 		//drawPointCloud(window, cameraPosition, fr.loadedVertices);
-		draw(window, camera, objects, type);
+		if (type == RAYTRACE) draw(window, camera, objects);
+		else drawInterpolationRenders(window, camera, objects, type);
 
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
 		window.renderFrame();
