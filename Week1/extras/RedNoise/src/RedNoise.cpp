@@ -26,9 +26,9 @@ void drawInterpolationRenders(DrawingWindow& window, Camera &camera, std::vector
 }
 
 void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> objects) {
-	//window.clearPixels();
+	window.clearPixels();
 	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
-	//glm::vec3 lightPosition = Raytrace::getCanvasPosition(camera, { WIDTH/2, 3*HEIGHT/4, -2 }, inverseViewMatrix);
+	glm::vec3 lightPosition = { 0, 0.75, 1.5 };
 	for (int y = 0; y < HEIGHT; y++) {
 		for (int x = 0; x < WIDTH; x++) {
 			// normalise the canvas coordinates into real world coordinates
@@ -41,13 +41,13 @@ void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> obje
 				continue;
 			}
 
-			/*glm::vec3 lightDirection = glm::normalize(lightPosition - intersection.intersectionPoint);
+			glm::vec3 lightDirection = glm::normalize(lightPosition - intersection.intersectionPoint);
 			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(intersection.intersectionPoint, lightDirection, objects);
 			if (shadowIntersection.triangleIndex != -1) {
 
-				window.setPixelColour(x, y, 0);
+				window.setPixelColour(x, y, 0xFF333333);
 				continue;
-			}*/
+			}
 			Colour color = intersection.intersectedTriangle.colour;
 			uint32_t pixelColor = (255 << 24) + (int(color.red) << 16) + (int(color.green) << 8) + int(color.blue);
 			//std::cout << pixelColor << " @ " << x << ", " << y << std::endl;
