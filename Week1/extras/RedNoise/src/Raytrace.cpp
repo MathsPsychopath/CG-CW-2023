@@ -31,9 +31,9 @@ RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPo
 glm::vec3 Raytrace::getCanvasPosition(Camera& camera, CanvasPoint position, glm::mat3 inverseViewMatrix) {
 	int scaleFactor = 180;
 	float focalLength = 2.0f;
-	//position.x = WIDTH - position.x;
+	position.x = WIDTH - position.x;
 	float realX = ((position.x + float(WIDTH) / 2) / (scaleFactor * focalLength));
 	float realY = ((position.y + float(HEIGHT) / 2) / (scaleFactor * focalLength));
-	glm::vec3 displacement = inverseViewMatrix * glm::vec3(realX, realY, -1);
+	glm::vec3 displacement = inverseViewMatrix * glm::vec3(realX, realY, focalLength);
 	return camera.cameraPosition + displacement;
 }

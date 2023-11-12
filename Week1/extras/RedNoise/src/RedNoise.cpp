@@ -34,7 +34,7 @@ void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> obje
 			// normalise the canvas coordinates into real world coordinates
 			glm::vec3 canvasPosition = Raytrace::getCanvasPosition(camera, CanvasPoint(x, y), inverseViewMatrix);
 
-			glm::vec3 direction = glm::normalize(canvasPosition - camera.cameraPosition);
+			glm::vec3 direction = glm::normalize(camera.cameraPosition - canvasPosition);
 
 			RayTriangleIntersection intersection = Raytrace::getClosestValidIntersection(camera.cameraPosition, direction, objects);
 			if (intersection.triangleIndex == -1) {
@@ -42,8 +42,8 @@ void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> obje
 			}
 
 			Colour color = intersection.intersectedTriangle.colour;
-			std::cout << color << std::endl;
 			uint32_t pixelColor = (255 << 24) + (int(color.red) << 16) + (int(color.green) << 8) + int(color.blue);
+			std::cout << pixelColor << " @ " << x << ", " << y << std::endl;
 			window.setPixelColour(x, y, pixelColor);
 		}
 	}
