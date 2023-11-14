@@ -6,5 +6,12 @@ const enum RenderType {
 	POINTCLOUD,
 	WIREFRAME,
 	RASTER,
-	RAYTRACE
+	RAYTRACE,
+};
+const enum LightType {
+	HARD,
+	PROXIMITY,
+	INCIDENCE,
+	DIFFUSE,
+	SPECULAR,
 };

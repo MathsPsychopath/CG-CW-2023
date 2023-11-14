@@ -25,7 +25,6 @@ RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPo
 			closest.distanceFromCamera = t;
 			closest.triangleIndex = index++;
 			closest.intersectedTriangle = triangle;
-			closest.intersectedTriangle.normal = glm::normalize(glm::cross(e0, e1));
 			closest.intersectionPoint = cameraPosition + t * rayDirection;
 		}
 	}
@@ -40,4 +39,13 @@ glm::vec3 Raytrace::getCanvasPosition(Camera& camera, CanvasPoint position, glm:
 	float realY = ((position.y - HEIGHT / 2) / (scaleFactor * focalLength));
 	glm::vec3 displacement = glm::vec3(realX, realY, focalLength) * inverseViewMatrix;
 	return camera.cameraPosition + displacement;
+}
+
+void Raytrace::drawHardShadows(DrawingWindow& window, CanvasPoint point, Colour color, bool hasDirectLight) {
+	if (!hasDirectLight) {
+		window.setPixelColour(point.x, point.y, 0);
+	} else {
+		uint32_t pixelColor = (255 << 24) + (int(color.red) << 16) + (int(color.green) << 8) + int(color.blue);
+		window.setPixelColour(point.x, point.y, pixelColor);
+	}
 }
