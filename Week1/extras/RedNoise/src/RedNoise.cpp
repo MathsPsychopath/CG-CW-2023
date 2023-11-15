@@ -41,15 +41,15 @@ void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> obje
 			}
 
 			glm::vec3 offsetPoint = intersection.intersectionPoint + 0.01f * intersection.intersectedTriangle.normal;
+			float lightDistance = glm::length(lightPosition - offsetPoint);
 			glm::vec3 lightDirection = glm::normalize(lightPosition - offsetPoint);
 
-			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex);
-			
+			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
+
 			if (lighting == HARD) Raytrace::drawHardShadows(window, CanvasPoint(x,y), intersection.intersectedTriangle.colour, shadowIntersection.triangleIndex == -1);
 			else if (lighting == PROXIMITY) {
-				float lightDistance = glm::length(lightPosition - offsetPoint);
-				float illumination = (2 / (3 * glm::pi<float>() * glm::pow(lightDistance,2)));
-				illumination = glm::clamp(illumination, 0.0f, 1.0f);
+				float illumination = (4 / (3 * glm::pi<float>() * glm::pow(lightDistance,2)));
+				illumination = glm::clamp(illumination, 0.2f, 1.0f);
 				Colour color = intersection.intersectedTriangle.colour;
 				uint32_t pixelColor = (255 << 24) + 
 					(int(color.red * illumination) << 16) + 
@@ -59,13 +59,16 @@ void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> obje
 			} 
 			else if (lighting == INCIDENCE) {
 				float incidentAngle = glm::dot(intersection.intersectedTriangle.normal, lightDirection);
-				incidentAngle = glm::max(incidentAngle, 0.0f);
+				incidentAngle = glm::max(incidentAngle, 0.2f);
 				Colour color = intersection.intersectedTriangle.colour;
 				uint32_t pixelColor = (255 << 24) +
 					(int(color.red * incidentAngle) << 16) +
 					(int(color.green * incidentAngle) << 8) +
 					int(color.blue * incidentAngle);
 				window.setPixelColour(x, y, pixelColor);
+			}
+			else if (lighting == SPECULAR) {
+				// 
 			}
 				
 		}
