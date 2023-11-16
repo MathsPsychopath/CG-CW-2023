@@ -5,9 +5,10 @@
 #include <array>
 #include "Colour.h"
 #include "TexturePoint.h"
+#include "GouraudVertex.h"
 
 struct ModelTriangle {
-	std::array<glm::vec3, 3> vertices{};
+	std::array<GouraudVertex, 3> vertices{};
 	std::array<TexturePoint, 3> texturePoints{};
 	Colour colour{};
 	glm::vec3 normal{};

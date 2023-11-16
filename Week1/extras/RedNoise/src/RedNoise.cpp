@@ -14,9 +14,9 @@ void drawInterpolationRenders(DrawingWindow& window, Camera &camera, std::vector
 	glm::mat3 viewMatrix = camera.lookAt({ 0,0,0 }); 
 	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
 	for (const ModelTriangle& object : objects) {
-		CanvasPoint first = Wireframe::canvasIntersection(camera, object.vertices[0], 2.0, viewMatrix);
-		CanvasPoint second = Wireframe::canvasIntersection(camera, object.vertices[1], 2.0, viewMatrix);
-		CanvasPoint third = Wireframe::canvasIntersection(camera, object.vertices[2], 2.0, viewMatrix);
+		CanvasPoint first = Wireframe::canvasIntersection(camera, object.vertices[0].position, 2.0, viewMatrix);
+		CanvasPoint second = Wireframe::canvasIntersection(camera, object.vertices[1].position, 2.0, viewMatrix);
+		CanvasPoint third = Wireframe::canvasIntersection(camera, object.vertices[2].position, 2.0, viewMatrix);
 
 		CanvasTriangle flattened(first, second, third);
 		if (type == POINTCLOUD) Wireframe::drawCloudPoints(window, camera, { first, second, third });
@@ -134,20 +134,37 @@ int main(int argc, char *argv[]) {
 	triangle.v2().texturePoint = TexturePoint(65, 330);
 	TextureMap textures = TextureMap("texture.ppm");
 
-	Camera camera(0.0, 0.0, 4.0);
+	//Camera camera(0.0, 0.0, 4.0);
+	Camera camera(0.0, 5.5, 4.0);
 
 	FileReader fr;
 	fr.readMTLFile("cornell-box.mtl");
-	std::vector<ModelTriangle> objects = fr.readOBJFile("cornell-box.obj", 0.35);
+	//std::vector<ModelTriangle> objects = fr.readOBJFile("cornell-box.obj", 0.35);
+	std::vector<ModelTriangle> objects = fr.readOBJFile("sphere.obj", 1);
+	
 	// calculate normals
 	for (auto& triangle : objects) {
-		glm::vec3 e0 = triangle.vertices[1] - triangle.vertices[0];
-		glm::vec3 e1 = triangle.vertices[2] - triangle.vertices[0];
-		triangle.normal = glm::normalize(glm::cross(e0, e1));
+		glm::vec3 e0 = triangle.vertices[1].position - triangle.vertices[0].position;
+		glm::vec3 e1 = triangle.vertices[2].position - triangle.vertices[0].position;
+		//triangle.normal = glm::normalize(glm::cross(e0, e1)); // winding order for cornell box
+		triangle.normal = glm::normalize(glm::cross(e1, e0)); // winding order for sphere
+		
+		for (auto& vertex : triangle.vertices) {
+			vertex.normal += triangle.normal;
+		}
 	}
+	
+	// normalise all vertex normal sums
+	for (auto& triangle : objects) {
+		for (auto& vertex : triangle.vertices) {
+			vertex.normal = glm::normalize(vertex.normal);
+		}
+	}
+
 	RenderType renderer = RAYTRACE;
-	LightOptions lighting(true, true, true, true, true);
-	glm::vec3 lightPosition = { 0, 0, 0.25 };
+	LightOptions lighting(false, true, true, true, false);
+	//glm::vec3 lightPosition = { 0, 0, 0.25 };
+	glm::vec3 lightPosition = { 0, 2, 1 };
 
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
