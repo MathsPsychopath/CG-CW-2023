@@ -45,11 +45,13 @@ void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> obje
 			float lightDistance = glm::length(lightPosition - offsetPoint);
 			glm::vec3 lightDirection = glm::normalize(lightPosition - offsetPoint);
 			Colour color = intersection.intersectedTriangle.colour;
+			Colour ambience = Colour(color);
 
 			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
-
+			
 			if (lighting.useShadow && shadowIntersection.triangleIndex != -1) {
-				continue;
+				if (lighting.useAmbience) color *= 0;
+				else continue;
 			}
 			if (lighting.useProximity) {
 				float lightIntensity = 5;
@@ -70,6 +72,9 @@ void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> obje
 				//specularity = glm::pow(glm::max(specularity, 0.0f, 64) * 128;
 				specularity = glm::pow(specularity, 256) * 255;
 				color += specularity;
+			}
+			if (lighting.useAmbience) {
+				color.applyAmbience(0.4, ambience);
 			}
 			window.setPixelColour(x, y, color.asNumeric());
 		}
@@ -109,6 +114,7 @@ void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderT
 		else if (event.key.keysym.sym == SDLK_3) renderer = POINTCLOUD;
 		else if (event.key.keysym.sym == SDLK_4) renderer = RAYTRACE;
 		else if (event.key.keysym.sym == SDLK_h) lighting.useShadow = !lighting.useShadow;
+		else if (event.key.keysym.sym == SDLK_m) lighting.useAmbience = !lighting.useAmbience;
 		else if (event.key.keysym.sym == SDLK_p) lighting.useProximity = !lighting.useProximity;
 		else if (event.key.keysym.sym == SDLK_i) lighting.useIncidence = !lighting.useIncidence;
 		else if (event.key.keysym.sym == SDLK_z) lighting.useSpecular = !lighting.useSpecular;
@@ -140,7 +146,7 @@ int main(int argc, char *argv[]) {
 		triangle.normal = glm::normalize(glm::cross(e0, e1));
 	}
 	RenderType renderer = RAYTRACE;
-	LightOptions lighting(true, true, true, true);
+	LightOptions lighting(true, true, true, true, true);
 	glm::vec3 lightPosition = { 0, 0, 0.25 };
 
 	while (true) {

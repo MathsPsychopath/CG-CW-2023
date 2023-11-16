@@ -17,6 +17,7 @@ struct Colour {
 	void operator+=(float highlight);
 
 	uint32_t asNumeric();
+	void applyAmbience(float ambientLight, Colour original);
 };
 
 std::ostream &operator<<(std::ostream &os, const Colour &colour);

@@ -29,3 +29,10 @@ void Colour::operator+=(float highlight) {
 	this->green = glm::min(this->green + int(highlight), 255);
 	this->blue = glm::min(this->blue + int(highlight), 255);
 }
+
+void Colour::applyAmbience(float ambientLight, Colour original) {
+	original *= ambientLight;
+	this->red = glm::clamp(this->red, original.red, 255);
+	this->green = glm::clamp(this->green, original.green, 255);
+	this->blue = glm::clamp(this->blue, original.blue, 255);
+}
