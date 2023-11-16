@@ -6,5 +6,5 @@ const enum RenderType {
 	POINTCLOUD,
 	WIREFRAME,
 	RASTER,
-	RAYTRACE
+	RAYTRACE,
 };

@@ -1,6 +1,6 @@
 #include "Raytrace.h"
 
-RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPosition, glm::vec3 rayDirection, const std::vector<ModelTriangle>& objects, int excludeID) {
+RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPosition, glm::vec3 rayDirection, const std::vector<ModelTriangle>& objects, int excludeID, float lightDistance) {
 	RayTriangleIntersection closest;
 	closest.distanceFromCamera = std::numeric_limits<float>::max();
 	int index = 0;
@@ -18,14 +18,13 @@ RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPo
 		// assert validity check
 		if (u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0 && u + v <= 1.0) {
 			// get the closest triangle to camera
-			if (t > closest.distanceFromCamera || t < 0 || index == excludeID) {
+			if (t > lightDistance || t > closest.distanceFromCamera || t < 0 || index == excludeID) {
 				index++;
 				continue;
 			}
 			closest.distanceFromCamera = t;
 			closest.triangleIndex = index++;
 			closest.intersectedTriangle = triangle;
-			closest.intersectedTriangle.normal = glm::normalize(glm::cross(e0, e1));
 			closest.intersectionPoint = cameraPosition + t * rayDirection;
 		}
 	}
