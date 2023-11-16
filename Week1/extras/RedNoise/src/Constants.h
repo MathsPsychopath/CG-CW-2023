@@ -8,10 +8,3 @@ const enum RenderType {
 	RASTER,
 	RAYTRACE,
 };
-const enum LightType {
-	HARD,
-	PROXIMITY,
-	INCIDENCE,
-	DIFFUSE,
-	SPECULAR,
-};

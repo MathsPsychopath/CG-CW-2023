@@ -7,6 +7,7 @@
 #include "Rasterize.h"
 #include "Wireframe.h"
 #include "Raytrace.h"
+#include "Lighting.h"
 
 void drawInterpolationRenders(DrawingWindow& window, Camera &camera, std::vector<ModelTriangle> objects, RenderType type) {
 	window.clearPixels();
@@ -25,7 +26,7 @@ void drawInterpolationRenders(DrawingWindow& window, Camera &camera, std::vector
 	}
 }
 
-void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> objects, LightType lighting, glm::vec3 lightPosition) {
+void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> objects, LightOptions& lighting, glm::vec3 lightPosition) {
 	window.clearPixels();
 	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
 	for (int y = 0; y < HEIGHT; y++) {
@@ -43,39 +44,48 @@ void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> obje
 			glm::vec3 offsetPoint = intersection.intersectionPoint + 0.01f * intersection.intersectedTriangle.normal;
 			float lightDistance = glm::length(lightPosition - offsetPoint);
 			glm::vec3 lightDirection = glm::normalize(lightPosition - offsetPoint);
+			Colour color = intersection.intersectedTriangle.colour;
 
 			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
 
-			if (lighting == HARD) Raytrace::drawHardShadows(window, CanvasPoint(x,y), intersection.intersectedTriangle.colour, shadowIntersection.triangleIndex == -1);
-			else if (lighting == PROXIMITY) {
-				float illumination = (4 / (3 * glm::pi<float>() * glm::pow(lightDistance,2)));
-				illumination = glm::clamp(illumination, 0.2f, 1.0f);
-				Colour color = intersection.intersectedTriangle.colour;
-				uint32_t pixelColor = (255 << 24) + 
-					(int(color.red * illumination) << 16) + 
-					(int(color.green * illumination) << 8) + 
-					int(color.blue * illumination);
-				window.setPixelColour(x, y, pixelColor);
+			if (lighting.useShadow && shadowIntersection.triangleIndex != -1) {
+				continue;
+			}
+			if (lighting.useProximity) {
+				float lightIntensity = 5;
+				float illumination = (lightIntensity / (7 * glm::pi<float>() * glm::pow(lightDistance,2)));
+				illumination = glm::clamp(illumination, 0.0f, 1.0f);
+				color *= illumination;
 			} 
-			else if (lighting == INCIDENCE) {
+			if (!lighting.useIncidence) {
 				float incidentAngle = glm::dot(intersection.intersectedTriangle.normal, lightDirection);
 				incidentAngle = glm::max(incidentAngle, 0.2f);
-				Colour color = intersection.intersectedTriangle.colour;
-				uint32_t pixelColor = (255 << 24) +
-					(int(color.red * incidentAngle) << 16) +
-					(int(color.green * incidentAngle) << 8) +
-					int(color.blue * incidentAngle);
+				color *= incidentAngle;
+			}
+			if (!lighting.useSpecular) {
+				// apply specular formula
+				/*glm::vec3 reflection =  
+					2.0f * intersection.intersectedTriangle.normal *
+					glm::dot(lightDirection, intersection.intersectedTriangle.normal) - lightDirection;*/
+				glm::vec3 reflection = glm::reflect(-lightDirection, intersection.intersectedTriangle.normal);
+				glm::vec3 viewDirection = glm::normalize(camera.cameraPosition - intersection.intersectionPoint);
+				float specularity = glm::dot(reflection, viewDirection);
+				// the alteration to highlight is to add dissapation as lightDistance increases
+				specularity = glm::pow(glm::max(specularity, 0.0f), 64) * 128;
+				color *= specularity;
+				/*int red = glm::min(255, int(color.red + highlight));
+				int green = glm::min(255, int(color.green + highlight));
+				int blue = glm::min(255, int(color.blue + highlight));*/
+				/*uint32_t pixelColor = (255 << 24) + (red << 16) + (green << 8) + blue;
 				window.setPixelColour(x, y, pixelColor);
+				continue;*/
 			}
-			else if (lighting == SPECULAR) {
-				// 
-			}
-				
+			window.setPixelColour(x, y, color.asNumeric());
 		}
 	}
 }
 
-void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderType& renderer, LightType& lighting, glm::vec3& lightPosition) {
+void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderType& renderer, LightOptions& lighting, glm::vec3& lightPosition) {
 	if (event.type == SDL_KEYDOWN) {
 		if (event.key.keysym.sym == SDLK_LEFT) {
 			if (renderer == RAYTRACE) lightPosition += glm::vec3(-0.25, 0, 0);
@@ -107,10 +117,10 @@ void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderT
 		else if (event.key.keysym.sym == SDLK_2) renderer = RASTER;
 		else if (event.key.keysym.sym == SDLK_3) renderer = POINTCLOUD;
 		else if (event.key.keysym.sym == SDLK_4) renderer = RAYTRACE;
-		else if (event.key.keysym.sym == SDLK_h) lighting = HARD;
-		else if (event.key.keysym.sym == SDLK_p) lighting = PROXIMITY;
-		else if (event.key.keysym.sym == SDLK_i) lighting = INCIDENCE;
-		else if (event.key.keysym.sym == SDLK_z) lighting = SPECULAR;
+		else if (event.key.keysym.sym == SDLK_h) lighting.useShadow = !lighting.useShadow;
+		else if (event.key.keysym.sym == SDLK_p) lighting.useProximity = !lighting.useProximity;
+		else if (event.key.keysym.sym == SDLK_i) lighting.useIncidence = !lighting.useIncidence;
+		else if (event.key.keysym.sym == SDLK_z) lighting.useSpecular = !lighting.useSpecular;
 	} else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
@@ -139,8 +149,8 @@ int main(int argc, char *argv[]) {
 		triangle.normal = glm::normalize(glm::cross(e0, e1));
 	}
 	RenderType renderer = RAYTRACE;
-	LightType lighting = INCIDENCE;
-	glm::vec3 lightPosition = { 0, 0.75, 0 };
+	LightOptions lighting(true, true, true, true);
+	glm::vec3 lightPosition = { 0, 0, 0.25 };
 
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
