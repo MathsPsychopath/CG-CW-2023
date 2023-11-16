@@ -53,32 +53,23 @@ void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> obje
 			}
 			if (lighting.useProximity) {
 				float lightIntensity = 5;
-				float illumination = (lightIntensity / (7 * glm::pi<float>() * glm::pow(lightDistance,2)));
-				illumination = glm::clamp(illumination, 0.0f, 1.0f);
+				float illumination = (lightIntensity / (4 * glm::pi<float>() * glm::pow(lightDistance,2)));
 				color *= illumination;
 			} 
-			if (!lighting.useIncidence) {
+			if (lighting.useIncidence) {
 				float incidentAngle = glm::dot(intersection.intersectedTriangle.normal, lightDirection);
-				incidentAngle = glm::max(incidentAngle, 0.2f);
+				incidentAngle = glm::max(incidentAngle, 0.f);
 				color *= incidentAngle;
 			}
-			if (!lighting.useSpecular) {
+			if (lighting.useSpecular) {
 				// apply specular formula
-				/*glm::vec3 reflection =  
-					2.0f * intersection.intersectedTriangle.normal *
-					glm::dot(lightDirection, intersection.intersectedTriangle.normal) - lightDirection;*/
 				glm::vec3 reflection = glm::reflect(-lightDirection, intersection.intersectedTriangle.normal);
 				glm::vec3 viewDirection = glm::normalize(camera.cameraPosition - intersection.intersectionPoint);
 				float specularity = glm::dot(reflection, viewDirection);
 				// the alteration to highlight is to add dissapation as lightDistance increases
-				specularity = glm::pow(glm::max(specularity, 0.0f), 64) * 128;
-				color *= specularity;
-				/*int red = glm::min(255, int(color.red + highlight));
-				int green = glm::min(255, int(color.green + highlight));
-				int blue = glm::min(255, int(color.blue + highlight));*/
-				/*uint32_t pixelColor = (255 << 24) + (red << 16) + (green << 8) + blue;
-				window.setPixelColour(x, y, pixelColor);
-				continue;*/
+				//specularity = glm::pow(glm::max(specularity, 0.0f, 64) * 128;
+				specularity = glm::pow(specularity, 256) * 255;
+				color += specularity;
 			}
 			window.setPixelColour(x, y, color.asNumeric());
 		}

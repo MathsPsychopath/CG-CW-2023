@@ -23,3 +23,9 @@ void Colour::operator*=(float colorScale) {
 	this->blue = glm::min(int(this->blue * colorScale), 255);
 	this->green = glm::min(int(this->green * colorScale), 255);
 }
+
+void Colour::operator+=(float highlight) {
+	this->red = glm::min(this->red + int(highlight), 255);
+	this->green = glm::min(this->green + int(highlight), 255);
+	this->blue = glm::min(this->blue + int(highlight), 255);
+}
