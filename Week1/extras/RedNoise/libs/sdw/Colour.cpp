@@ -24,10 +24,26 @@ void Colour::operator*=(float colorScale) {
 	this->green = glm::min(int(this->green * colorScale), 255);
 }
 
+Colour Colour::operator*(float colorScale) {
+	Colour result;
+	result.red = int(this->red * colorScale);
+	result.green = int(this->green * colorScale);
+	result.blue = int(this->blue * colorScale);
+	return result;
+}
+
 void Colour::operator+=(float highlight) {
 	this->red = glm::min(this->red + int(highlight), 255);
 	this->green = glm::min(this->green + int(highlight), 255);
 	this->blue = glm::min(this->blue + int(highlight), 255);
+}
+
+Colour Colour::operator+(Colour other) {
+	Colour result;
+	result.red = glm::min(this->red + other.red, 255);
+	result.green = glm::min(this->green + other.green, 255);
+	result.blue = glm::min(this->blue + other.blue, 255);
+	return result;
 }
 
 void Colour::applyAmbience(float ambientLight, Colour original) {

@@ -6,9 +6,9 @@ RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPo
 	int index = 0;
 	closest.triangleIndex = -1;
 	for (const auto& triangle : objects) {
-		glm::vec3 e0 = triangle.vertices[1] - triangle.vertices[0];
-		glm::vec3 e1 = triangle.vertices[2] - triangle.vertices[0];
-		glm::vec3 SPVector = cameraPosition - triangle.vertices[0];
+		glm::vec3 e0 = triangle.vertices[1].position - triangle.vertices[0].position;
+		glm::vec3 e1 = triangle.vertices[2].position - triangle.vertices[0].position;
+		glm::vec3 SPVector = cameraPosition - triangle.vertices[0].position;
 		glm::mat3 DEMatrix(-rayDirection, e0, e1);
 		glm::vec3 possibleSolution = glm::inverse(DEMatrix) * SPVector;
 		float t = possibleSolution.x; // distance from camera

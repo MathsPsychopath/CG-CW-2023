@@ -14,7 +14,9 @@ struct Colour {
 	Colour(std::string n, int r, int g, int b);
 
 	void operator*=(float colorScale);
+	Colour operator*(float colorScale);
 	void operator+=(float highlight);
+	Colour operator+(Colour other);
 
 	uint32_t asNumeric();
 	void applyAmbience(float ambientLight, Colour original);

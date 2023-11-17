@@ -26,7 +26,27 @@ void drawInterpolationRenders(DrawingWindow& window, Camera &camera, std::vector
 	}
 }
 
-void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> objects, LightOptions& lighting, glm::vec3 lightPosition) {
+BarycentricCoordinates getGouraudBarycentric(const ModelTriangle& intersectedTriangle, glm::vec3 position) {
+	GouraudVertex A = intersectedTriangle.vertices[0];
+	GouraudVertex B = intersectedTriangle.vertices[1];
+	GouraudVertex C = intersectedTriangle.vertices[2];
+
+	glm::vec3 AB = glm::vec3(B) - glm::vec3(A);
+	glm::vec3 AC = glm::vec3(C) - glm::vec3(A);
+	glm::vec3 PA = glm::vec3(A) - position;
+
+	float totalArea = glm::length(glm::cross(AB, AC)) / 2.0f;
+	float areaPBC = glm::length(glm::cross(AB, PA)) / 2.0f;
+	float areaPCA = glm::length(glm::cross(PA, AC)) / 2.0f;
+
+	BarycentricCoordinates result{};
+	result.A = areaPBC / totalArea;
+	result.B = areaPCA / totalArea;
+	result.C = 1 - result.A - result.B;
+	return result;
+}
+
+void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> objects, glm::vec3 lightPosition) {
 	window.clearPixels();
 	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
 	for (int y = 0; y < HEIGHT; y++) {
@@ -41,47 +61,19 @@ void draw(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> obje
 				continue;
 			}
 
-			glm::vec3 offsetPoint = intersection.intersectionPoint + 0.01f * intersection.intersectedTriangle.normal;
-			float lightDistance = glm::length(lightPosition - offsetPoint);
-			glm::vec3 lightDirection = glm::normalize(lightPosition - offsetPoint);
-			Colour color = intersection.intersectedTriangle.colour;
-			Colour ambience = Colour(color);
-
-			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
-			
-			if (lighting.useShadow && shadowIntersection.triangleIndex != -1) {
-				if (lighting.useAmbience) color *= 0;
-				else continue;
+			Colour originalColor = intersection.intersectedTriangle.colour;
+			auto& vertices = intersection.intersectedTriangle.vertices;
+			BarycentricCoordinates barycentric = getGouraudBarycentric(intersection.intersectedTriangle, canvasPosition);
+			for (auto& vertex : vertices) {
+				vertex.color = originalColor * (vertex.ambient + vertex.proximity + vertex.incidental + vertex.specular);
 			}
-			if (lighting.useProximity) {
-				float lightIntensity = 5;
-				float illumination = (lightIntensity / (4 * glm::pi<float>() * glm::pow(lightDistance,2)));
-				color *= illumination;
-			} 
-			if (lighting.useIncidence) {
-				float incidentAngle = glm::dot(intersection.intersectedTriangle.normal, lightDirection);
-				incidentAngle = glm::max(incidentAngle, 0.f);
-				color *= incidentAngle;
-			}
-			if (lighting.useSpecular) {
-				// apply specular formula
-				glm::vec3 reflection = glm::reflect(-lightDirection, intersection.intersectedTriangle.normal);
-				glm::vec3 viewDirection = glm::normalize(camera.cameraPosition - intersection.intersectionPoint);
-				float specularity = glm::dot(reflection, viewDirection);
-				// the alteration to highlight is to add dissapation as lightDistance increases
-				//specularity = glm::pow(glm::max(specularity, 0.0f, 64) * 128;
-				specularity = glm::pow(specularity, 256) * 255;
-				color += specularity;
-			}
-			if (lighting.useAmbience) {
-				color.applyAmbience(0.4, ambience);
-			}
-			window.setPixelColour(x, y, color.asNumeric());
+			Colour finalColor = vertices[0].color * barycentric.A + vertices[1].color * barycentric.B + vertices[2].color * barycentric.C;
+			window.setPixelColour(x, y, finalColor.asNumeric());
 		}
 	}
 }
 
-void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderType& renderer, LightOptions& lighting, glm::vec3& lightPosition) {
+void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderType& renderer, LightOptions& lighting, glm::vec3& lightPosition, bool& hasParametersChanged) {
 	if (event.type == SDL_KEYDOWN) {
 		if (event.key.keysym.sym == SDLK_LEFT) {
 			if (renderer == RAYTRACE) lightPosition += glm::vec3(-0.25, 0, 0);
@@ -118,9 +110,46 @@ void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderT
 		else if (event.key.keysym.sym == SDLK_p) lighting.useProximity = !lighting.useProximity;
 		else if (event.key.keysym.sym == SDLK_i) lighting.useIncidence = !lighting.useIncidence;
 		else if (event.key.keysym.sym == SDLK_z) lighting.useSpecular = !lighting.useSpecular;
+		else hasParametersChanged = false;
 	} else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		window.savePPM("output.ppm");
 		window.saveBMP("output.bmp");
+	}
+}
+
+void preprocess(std::vector<ModelTriangle> objects, glm::vec3 lightPosition, glm::vec3 cameraPosition, LightOptions& lighting, bool& hasParametersChanged) {
+	hasParametersChanged = false;
+	for (auto& triangle : objects) {
+		for (auto& vertex : triangle.vertices) {
+			glm::vec3 lightDirection = glm::normalize(lightPosition - glm::vec3(vertex));
+			float lightDistance = glm::distance(lightPosition, glm::vec3(vertex));
+			Colour originalColor = triangle.colour;
+
+			// calculate the proximity lighting for vertex
+			if (lighting.useProximity) {
+				float lightIntensity = 5;
+				float illumination = (lightIntensity / (4 * glm::pi<float>() * glm::pow(lightDistance, 2)));
+				vertex.proximity = illumination;
+			}
+			else vertex.proximity = 0;
+
+			// calculate the incidence lighting for vertex
+			if (lighting.useIncidence) {
+				float incidentAngle = glm::dot(vertex.normal, lightDirection);
+				vertex.incidental = glm::max(incidentAngle, 0.0f);
+			}
+			else vertex.incidental = 0;
+
+			// calculate the specular lighting for vertex
+			if (lighting.useSpecular) {
+				glm::vec3 reflection = glm::reflect(-lightDirection, vertex.normal);
+				glm::vec3 viewDirection = glm::normalize(cameraPosition - glm::vec3(vertex));
+				float specularity = glm::dot(reflection, viewDirection);
+				float shininess = 256;
+				vertex.specular = glm::pow(glm::max(specularity, 0.0f), shininess);
+			}
+			else vertex.specular = 0;
+		}
 	}
 }
 
@@ -154,10 +183,11 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
-	// normalise all vertex normal sums
+	// normalise all vertex normal sums.
 	for (auto& triangle : objects) {
 		for (auto& vertex : triangle.vertices) {
 			vertex.normal = glm::normalize(vertex.normal);
+			vertex.ambient = 0.1;
 		}
 	}
 
@@ -165,13 +195,15 @@ int main(int argc, char *argv[]) {
 	LightOptions lighting(false, true, true, true, false);
 	//glm::vec3 lightPosition = { 0, 0, 0.25 };
 	glm::vec3 lightPosition = { 0, 2, 1 };
+	bool hasParametersChanged = true;
 
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
-		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lighting, lightPosition);
-		//Triangle::drawRasterizedTriangle(window, triangle, textures);
-		//drawPointCloud(window, cameraPosition, fr.loadedVertices);
-		if (renderer == RAYTRACE) draw(window, camera, objects, lighting, lightPosition);
+		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lighting, lightPosition, hasParametersChanged);
+		if (renderer == RAYTRACE) {
+			if (hasParametersChanged) preprocess(objects, lightPosition, camera.cameraPosition, lighting, hasParametersChanged);
+			draw(window, camera, objects, lightPosition);
+		}
 		else drawInterpolationRenders(window, camera, objects, renderer);
 
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !

@@ -50,9 +50,9 @@ CanvasPoint Wireframe::canvasIntersection(Camera& camera, glm::vec3 vertexPositi
 
 void Wireframe::drawWireframe(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> objects) {
 	for (const ModelTriangle& object : objects) {
-		CanvasPoint first = canvasIntersection(camera, object.vertices[0], 2.0, glm::mat3(1.0));
-		CanvasPoint second = canvasIntersection(camera, object.vertices[1], 2.0, glm::mat3(1.0));
-		CanvasPoint third = canvasIntersection(camera, object.vertices[2], 2.0, glm::mat3(1.0));
+		CanvasPoint first = canvasIntersection(camera, object.vertices[0].position, 2.0, glm::mat3(1.0));
+		CanvasPoint second = canvasIntersection(camera, object.vertices[1].position, 2.0, glm::mat3(1.0));
+		CanvasPoint third = canvasIntersection(camera, object.vertices[2].position, 2.0, glm::mat3(1.0));
 
 		CanvasTriangle flattened(first, second, third);
 		drawStrokedTriangle(window, flattened, Colour(255, 255, 255));
