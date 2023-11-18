@@ -8,12 +8,12 @@
 #include "GouraudVertex.h"
 
 struct ModelTriangle {
-	std::array<GouraudVertex, 3> vertices{};
+	std::array<int, 3> vertices{};
 	std::array<TexturePoint, 3> texturePoints{};
 	Colour colour{};
 	glm::vec3 normal{};
 
 	ModelTriangle();
-	ModelTriangle(const glm::vec3 &v0, const glm::vec3 &v1, const glm::vec3 &v2, Colour trigColour);
+	ModelTriangle(int v1Index, int v2Index, int v3Index, Colour trigColour);
 	friend std::ostream &operator<<(std::ostream &os, const ModelTriangle &triangle);
 };

@@ -35,7 +35,7 @@ add_executable(RedNoise
         libs/sdw/TextureMap.cpp
         libs/sdw/TexturePoint.cpp
         libs/sdw/Utils.cpp
-        src/RedNoise.cpp   "src/FileReader.h" "src/FileReader.cpp"   "src/Constants.h" "src/Camera.h" "src/Camera.cpp" "src/Rasterize.h" "src/Rasterize.cpp" "src/Wireframe.h" "src/Wireframe.cpp" "src/Raytrace.h" "src/Raytrace.cpp" "src/Lighting.h" "src/Lighting.cpp" "libs/sdw/GouraudVertex.h" "libs/sdw/GouraudVertex.cpp")
+        src/RedNoise.cpp   "src/FileReader.h" "src/FileReader.cpp"   "src/Constants.h" "src/Camera.h" "src/Camera.cpp" "src/Rasterize.h" "src/Rasterize.cpp" "src/Wireframe.h" "src/Wireframe.cpp" "src/Raytrace.h" "src/Raytrace.cpp" "src/Lighting.h" "src/Lighting.cpp" "libs/sdw/GouraudVertex.h" "libs/sdw/GouraudVertex.cpp" "libs/sdw/PolygonData.h" "libs/sdw/PolygonData.cpp")
 
 if (MSVC)
     target_compile_options(RedNoise

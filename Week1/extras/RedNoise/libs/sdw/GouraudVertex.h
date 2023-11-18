@@ -5,15 +5,17 @@
 struct GouraudVertex {
 	glm::vec3 position{};
 	glm::vec3 normal;
-	float ambient;
-	float proximity;
-	float incidental;
-	float specular;
+	Colour ambient;
+	Colour proximity;
+	Colour incidental;
+	Colour specular;
 
-	Colour color;
+	Colour originalColor;
+	Colour renderedColor;
 
 	operator glm::vec3();
 
 	GouraudVertex();
-	GouraudVertex(glm::vec3 position);
+	GouraudVertex(glm::vec3 position, Colour color);
+	friend std::ostream& operator<<(std::ostream& os, const GouraudVertex& gv);
 };

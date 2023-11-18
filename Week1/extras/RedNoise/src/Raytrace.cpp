@@ -1,14 +1,14 @@
 #include "Raytrace.h"
 
-RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPosition, glm::vec3 rayDirection, const std::vector<ModelTriangle>& objects, int excludeID, float lightDistance) {
+RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPosition, glm::vec3 rayDirection, PolygonData& objects, int excludeID, float lightDistance) {
 	RayTriangleIntersection closest;
 	closest.distanceFromCamera = std::numeric_limits<float>::max();
 	int index = 0;
 	closest.triangleIndex = -1;
-	for (const auto& triangle : objects) {
-		glm::vec3 e0 = triangle.vertices[1].position - triangle.vertices[0].position;
-		glm::vec3 e1 = triangle.vertices[2].position - triangle.vertices[0].position;
-		glm::vec3 SPVector = cameraPosition - triangle.vertices[0].position;
+	for (int triangleIndex = 0; triangleIndex < objects.loadedTriangles.size(); triangleIndex++) {
+		glm::vec3 e0 = objects.getTriangleVertexPosition(triangleIndex, 1) - objects.getTriangleVertexPosition(triangleIndex, 0);
+		glm::vec3 e1 = objects.getTriangleVertexPosition(triangleIndex, 2) - objects.getTriangleVertexPosition(triangleIndex, 0);
+		glm::vec3 SPVector = cameraPosition - objects.getTriangleVertexPosition(triangleIndex, 0);
 		glm::mat3 DEMatrix(-rayDirection, e0, e1);
 		glm::vec3 possibleSolution = glm::inverse(DEMatrix) * SPVector;
 		float t = possibleSolution.x; // distance from camera
@@ -24,7 +24,7 @@ RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPo
 			}
 			closest.distanceFromCamera = t;
 			closest.triangleIndex = index++;
-			closest.intersectedTriangle = triangle;
+			closest.intersectedTriangle = objects.loadedTriangles[triangleIndex];
 			closest.intersectionPoint = cameraPosition + t * rayDirection;
 		}
 	}

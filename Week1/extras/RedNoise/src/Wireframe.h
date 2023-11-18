@@ -6,6 +6,7 @@
 #include <CanvasTriangle.h>
 #include <unordered_map>
 #include <ModelTriangle.h>
+#include <PolygonData.h>
 
 namespace Wireframe {
 	// draws a line between 2 CanvasPoints
@@ -21,6 +22,6 @@ namespace Wireframe {
 	CanvasPoint canvasIntersection(Camera& camera, glm::vec3 vertexPosition, float focalLength, const glm::mat3& viewMatrix = glm::mat3(1.0));
 
 	// draws wireframe render
-	void drawWireframe(DrawingWindow& window, Camera& camera, std::vector<ModelTriangle> objects);
+	void drawWireframe(DrawingWindow& window, Camera& camera, PolygonData& objects);
 
 }
