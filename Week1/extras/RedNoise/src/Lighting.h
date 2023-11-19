@@ -7,5 +7,5 @@ struct LightOptions {
 	bool useSpecular;
 	bool useAmbience;
 
-	LightOptions(bool initShadow, bool initProx, bool initInc, bool initSpec, bool initAmb);
+	LightOptions(bool initAmb, bool initShadow, bool initProx, bool initInc, bool initSpec);
 };

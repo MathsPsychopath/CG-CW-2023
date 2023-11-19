@@ -6,9 +6,10 @@ struct GouraudVertex {
 	glm::vec3 position{};
 	glm::vec3 normal;
 	Colour ambient;
-	Colour proximity;
-	Colour incidental;
+	float proximity;
+	float incidental;
 	Colour specular;
+	Colour diffuse;
 
 	Colour originalColor;
 	Colour renderedColor;

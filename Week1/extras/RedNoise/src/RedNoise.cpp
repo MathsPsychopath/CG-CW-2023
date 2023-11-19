@@ -9,6 +9,9 @@
 #include "Raytrace.h"
 #include "Lighting.h"
 
+Colour globalAmbientColor(90, 20, 10);
+LightOptions lighting(false, true, true, true, false);
+
 void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type, TextureMap& textures) {
 	window.clearPixels();
 	glm::mat3 viewMatrix = camera.lookAt({ 0,0,0 }); 
@@ -64,6 +67,10 @@ void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMa
 	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
 	for (int y = 0; y < HEIGHT; y++) {
 		for (int x = 0; x < WIDTH; x++) {
+			if (x == 210 && y == 28) {
+				std::cout << "here" << std::endl;
+
+			}
 			// normalise the canvas coordinates into real world coordinates
 			glm::vec3 canvasPosition = Raytrace::getCanvasPosition(camera, CanvasPoint(x, y), inverseViewMatrix);
 
@@ -81,6 +88,7 @@ void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMa
 			float lightDistance = glm::length(lightPosition - offsetPoint);
 			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
 			if (useShadow && shadowIntersection.triangleIndex != -1) {
+				window.setPixelColour(x, y, lighting.useAmbience ? globalAmbientColor.asNumeric() : 0);
 				continue;
 			}
 
@@ -97,7 +105,7 @@ void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMa
 			}
 
 			// apply interpolated lighting from each vertex
-			Colour finalColor = baseColor + 
+			Colour finalColor = 
 				objects.loadedVertices[vertices[0]].renderedColor * barycentric.A +
 				objects.loadedVertices[vertices[1]].renderedColor * barycentric.B + 
 				objects.loadedVertices[vertices[2]].renderedColor * barycentric.C;
@@ -107,7 +115,7 @@ void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMa
 	}
 }
 
-void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderType& renderer, LightOptions& lighting, glm::vec3& lightPosition, bool& hasParametersChanged) {
+void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderType& renderer, glm::vec3& lightPosition, bool& hasParametersChanged) {
 	if (event.type == SDL_KEYDOWN) {
 		hasParametersChanged = true;
 		if (event.key.keysym.sym == SDLK_LEFT) {
@@ -147,38 +155,37 @@ void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderT
 		else if (event.key.keysym.sym == SDLK_z) lighting.useSpecular = !lighting.useSpecular;
 		else hasParametersChanged = false;
 	} else if (event.type == SDL_MOUSEBUTTONDOWN) {
-		window.savePPM("output.ppm");
-		window.saveBMP("output.bmp");
+		int x, y;
+		SDL_GetMouseState(&x, &y);
+		std::cout << "{ x: " << x << ", y: " << y << " }" << std::endl;
 	}
 }
 
-void preprocess(PolygonData& objects, glm::vec3 lightPosition, glm::vec3 cameraPosition, LightOptions& lighting, bool& hasParametersChanged) {
+void preprocess(PolygonData& objects, glm::vec3 lightPosition, glm::vec3 cameraPosition, bool& hasParametersChanged) {
 	hasParametersChanged = false;
-	Colour globalAmbientColor(30, 20, 10);
 	Colour globalLightColor(200, 200, 200);
 	for (auto& vertex : objects.loadedVertices) {
 		glm::vec3 lightDirection = glm::normalize(lightPosition - glm::vec3(vertex));
 		float lightDistance = glm::distance(lightPosition, glm::vec3(vertex));
 
-		// calculate the ambient lighting for vertex
-		if (lighting.useAmbience) {
-			vertex.ambient = globalAmbientColor;
-		}
+		if (lighting.useAmbience) vertex.ambient = globalAmbientColor;
 
 		// calculate the proximity lighting for vertex
 		if (lighting.useProximity) {
-			float lightIntensity = 1;
-			float illumination = (lightIntensity / (7 * glm::pi<float>() * glm::pow(lightDistance, 2)));
-			vertex.proximity = vertex.originalColor * illumination;
+			float lightIntensity = 5;
+			float illumination = (lightIntensity / (4 * glm::pi<float>() * glm::pow(lightDistance, 2)));
+			vertex.proximity = illumination;
 		}
-		else vertex.proximity = Colour();
+		else vertex.proximity = 1;
 
 		// calculate the incidence lighting for vertex
 		if (lighting.useIncidence) {
 			float incidentAngle = glm::dot(vertex.normal, lightDirection);
-			vertex.incidental = vertex.originalColor * glm::max(incidentAngle, 0.0f);
+			vertex.incidental = glm::max(incidentAngle, 0.0f);
 		}
-		else vertex.incidental = Colour();
+		else vertex.incidental = 1;
+
+		vertex.diffuse = vertex.originalColor * vertex.incidental * vertex.proximity;
 
 		// calculate the specular lighting for vertex
 		if (lighting.useSpecular) {
@@ -190,7 +197,7 @@ void preprocess(PolygonData& objects, glm::vec3 lightPosition, glm::vec3 cameraP
 		}
 		else vertex.specular = Colour();
 
-		vertex.renderedColor = (vertex.ambient + vertex.proximity + vertex.incidental + vertex.specular);
+		vertex.renderedColor = (vertex.ambient + vertex.diffuse + vertex.specular);
 		std::cout << vertex << std::endl;
 
 	}
@@ -240,17 +247,17 @@ int main(int argc, char *argv[]) {
 	}
 
 	RenderType renderer = RAYTRACE;
-	LightOptions lighting(true, false, false, false,false);
+	LightOptions lighting(true, true, true, true,false);
 	glm::vec3 lightPosition = { 0, 0.5, 0.25 };
 	//glm::vec3 lightPosition = { 1, 5, 1 };
 	bool hasParametersChanged = true;
-	preprocess(objects, lightPosition, camera.cameraPosition, lighting, hasParametersChanged);
+	preprocess(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
-		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lighting, lightPosition, hasParametersChanged);
+		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lightPosition, hasParametersChanged);
 		if (renderer == RAYTRACE) {
-			if (hasParametersChanged) preprocess(objects, lightPosition, camera.cameraPosition, lighting, hasParametersChanged);
+			if (hasParametersChanged) preprocess(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 			draw(window, camera, objects, textures, lightPosition, lighting.useShadow);
 		}
 		else drawInterpolationRenders(window, camera, objects, renderer, textures);
