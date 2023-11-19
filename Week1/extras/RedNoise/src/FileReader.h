@@ -4,6 +4,7 @@
 #include <fstream>
 #include <Utils.h>
 #include <PolygonData.h>
+#include <sstream>
 
 class FileReader {
 public:
@@ -11,7 +12,7 @@ public:
 
 	FileReader();
 
-	PolygonData readOBJFile(std::string filename, float scaleFactor);
+	PolygonData readOBJFile(std::string filename, float scaleFactor, glm::vec2 textureScales);
 
 	void readMTLFile(std::string filename);
 };

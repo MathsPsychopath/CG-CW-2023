@@ -9,7 +9,7 @@
 #include "Raytrace.h"
 #include "Lighting.h"
 
-void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type) {
+void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type, TextureMap textures) {
 	window.clearPixels();
 	glm::mat3 viewMatrix = camera.lookAt({ 0,0,0 }); 
 	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
@@ -21,8 +21,19 @@ void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData
 		CanvasTriangle flattened(first, second, third);
 		if (type == POINTCLOUD) Wireframe::drawCloudPoints(window, camera, { first, second, third });
 		else if (type == WIREFRAME) Wireframe::drawStrokedTriangle(window, flattened, Colour(255, 255, 255));
-		else if (type == RASTER) Rasterize::drawRasterizedTriangle(window, flattened, objects.loadedTriangles[triangleIndex].colour, zDepth);
-		
+		else if (type == RASTER) {
+			if (objects.loadedTriangles[triangleIndex].texturePoints[0] == -1) {
+				Rasterize::drawRasterizedTriangle(window, flattened, objects.loadedTriangles[triangleIndex].colour, zDepth);
+			}
+			else {
+				ModelTriangle texturedTriangle = objects.loadedTriangles[triangleIndex];
+				first.texturePoint = objects.loadedTextures[texturedTriangle.texturePoints[0]];
+				second.texturePoint = objects.loadedTextures[texturedTriangle.texturePoints[1]];
+				third.texturePoint = objects.loadedTextures[texturedTriangle.texturePoints[2]];
+				CanvasTriangle triangle = { first, second, third };
+				Rasterize::drawRasterizedTriangle(window, triangle, textures, zDepth);
+			}
+		}
 	}
 }
 
@@ -186,13 +197,13 @@ int main(int argc, char *argv[]) {
 	triangle.v2().texturePoint = TexturePoint(65, 330);
 	TextureMap textures = TextureMap("texture.ppm");
 
-	//Camera camera(0.0, 0.0, 4.0);
-	Camera camera(0.0, 5.5, 4.0);
+	Camera camera(0.0, 0.0, 4.0);
+	//Camera camera(0.0, 5.5, 4.0);
 
 	FileReader fr;
-	fr.readMTLFile("cornell-box.mtl");
-	//PolygonData objects = fr.readOBJFile("cornell-box.obj", 0.35);
-	PolygonData objects = fr.readOBJFile("sphere.obj", 1);
+	fr.readMTLFile("textured-cornell-box.mtl");
+	PolygonData objects = fr.readOBJFile("textured-cornell-box.obj", 0.35, {textures.width, textures.height});
+	//PolygonData objects = fr.readOBJFile("sphere.obj", 1);
 	if (objects.loadedTriangles.empty()) return -1;
 	
 	// calculate normals
@@ -216,10 +227,10 @@ int main(int argc, char *argv[]) {
 		objects.loadedVertices[vertexIndex].normal = glm::normalize(vertexNormal);
 	}
 
-	RenderType renderer = RAYTRACE;
+	RenderType renderer = RASTER;
 	LightOptions lighting(true, true, true, true, true);
-	//glm::vec3 lightPosition = { 0, 0.5, 0.25 };
-	glm::vec3 lightPosition = { 1, 5, 1 };
+	glm::vec3 lightPosition = { 0, 0.5, 0.25 };
+	//glm::vec3 lightPosition = { 1, 5, 1 };
 	bool hasParametersChanged = true;
 	preprocess(objects, lightPosition, camera.cameraPosition, lighting, hasParametersChanged);
 
@@ -230,7 +241,7 @@ int main(int argc, char *argv[]) {
 			if (hasParametersChanged) preprocess(objects, lightPosition, camera.cameraPosition, lighting, hasParametersChanged);
 			draw(window, camera, objects, lightPosition, lighting.useShadow);
 		}
-		else drawInterpolationRenders(window, camera, objects, renderer);
+		else drawInterpolationRenders(window, camera, objects, renderer, textures);
 
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
 		window.renderFrame();

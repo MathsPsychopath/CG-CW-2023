@@ -8,11 +8,13 @@ struct PolygonData {
 	std::unordered_map<int, std::set<int>> vertexToTriangles;
 	std::vector<ModelTriangle> loadedTriangles;
 	std::vector<GouraudVertex> loadedVertices;
+	std::vector<TexturePoint> loadedTextures;
 
 	PolygonData();
 	PolygonData(std::unordered_map<int, std::set<int>> vertexToTriangles,
 		std::vector<ModelTriangle> loadedTriangles,
-		std::vector<GouraudVertex> loadedVertices);
+		std::vector<GouraudVertex> loadedVertices,
+		std::vector<TexturePoint> loadedTextures);
 
 	GouraudVertex& getTriangleVertex(int triangleIndex, int triangleVertexIndex);
 

@@ -53,7 +53,7 @@ namespace {
 			textureB * coordinates.B +
 			textureC * coordinates.C;
 
-		return textures.pixels[std::floor(textureCoordinate.x) + std::floor(textureCoordinate.y) * width];
+		return textures.pixels[std::floor(glm::max(textureCoordinate.x, 0.0f)) + std::floor(glm::max(textureCoordinate.y, 0.0f)) * width];
 	}
 }
 
@@ -134,23 +134,31 @@ void Rasterize::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle tri
 	InterpolatedTriangle interpolations = Rasterize::triangle(canvasVertices);
 
 	// rasterize top triangle with textures
-	for (int y = canvasVertices[0].y, i = 0; y < canvasVertices[1].y; y++, i++) {
-		for (int x = std::floor(interpolations.topLeft[i]); x < std::ceil(interpolations.topRight[i]); x++) {
-			if (y < 0 || x < 0 || y >= HEIGHT || x >= WIDTH) continue;
+	for (int y = std::floor(canvasVertices[0].y), i = 0; y < std::floor(canvasVertices[1].y); y++, i++) {
+		if (y >= HEIGHT || y < 0) continue;
+		int xStart = std::floor(interpolations.topLeft[i]);
+		int xEnd = std::ceil(interpolations.topRight[i]);
+		if (std::abs(xStart - xEnd) < 2) continue;
+		for (int x = xStart; x < xEnd; x++) {
+			if (x < 0 || x >= WIDTH) continue;
 			glm::vec2 currentVertex(x, y);
 			BarycentricCoordinates ratios = barycentric(canvasVertices, currentVertex);
-			uint32_t pixelTexture = getTexture(ratios, canvasVertices, textures);
 			float zIndex = 1 / (ratios.A * canvasVertices[0].depth + ratios.B * canvasVertices[1].depth + ratios.C * canvasVertices[2].depth);
 			if (zDepth[y][x] < zIndex) continue;
+			uint32_t pixelTexture = getTexture(ratios, canvasVertices, textures);
 			window.setPixelColour(x, y, pixelTexture);
 			zDepth[y][x] = zIndex;
 		}
 	}
 
 	// rasterize bottom triangle with textures
-	for (int y = canvasVertices[1].y, i = 0; y < canvasVertices[2].y; y++, i++) {
-		for (int x = std::floor(interpolations.leftBottom[i]); x < std::ceil(interpolations.rightBottom[i]); x++) {
-			if (y < 0 || x < 0 || y >= HEIGHT || x >= WIDTH) continue;
+	for (int y = std::floor(canvasVertices[1].y), i = 0; y < std::floor(canvasVertices[2].y); y++, i++) {
+		if (y >= HEIGHT || y < 0) continue;
+		int xStart = std::floor(interpolations.leftBottom[i]);
+		int xEnd = std::ceil(interpolations.rightBottom[i]);
+		if (std::abs(xStart - xEnd) < 2) continue;
+		for (int x = xStart; x < xEnd; x++) {
+			if (x < 0 || x >= WIDTH) continue;
 			glm::vec2 currentVertex(x, y);
 			BarycentricCoordinates ratios = barycentric(canvasVertices, currentVertex);
 			uint32_t pixelTexture = getTexture(ratios, canvasVertices, textures);

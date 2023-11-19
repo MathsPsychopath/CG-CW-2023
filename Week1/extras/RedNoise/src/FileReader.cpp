@@ -4,7 +4,7 @@ FileReader::FileReader() {
 	this->supportedColors = std::unordered_map<std::string, Colour>();
 }
 
-PolygonData FileReader::readOBJFile(std::string filename, float scaleFactor) {
+PolygonData FileReader::readOBJFile(std::string filename, float scaleFactor, glm::vec2 textureScales) {
 	if (this->supportedColors.empty()) {
 		std::cout << "No palette detected" << std::endl;
 		return PolygonData();
@@ -23,6 +23,7 @@ PolygonData FileReader::readOBJFile(std::string filename, float scaleFactor) {
 	std::unordered_map<int, std::set<int>> vertexToTriangles;
 	std::vector<ModelTriangle> loadedTriangles;
 	std::vector<GouraudVertex> loadedVertices;
+	std::vector<TexturePoint> loadedTextures;
 
 	while (std::getline(inputStream, line)) {
 		std::vector<std::string> tokens = split(line, ' ');
@@ -38,15 +39,32 @@ PolygonData FileReader::readOBJFile(std::string filename, float scaleFactor) {
 			loadedVertices.push_back(vertex);
 			vertexToTriangles[currentVertex++] = {};
 		}
+		else if (identifier == "vt") {
+			loadedTextures.push_back(TexturePoint(std::stof(tokens[1]) * textureScales.x, (1 - std::stof(tokens[2])) * textureScales.y));
+		}
 		else if (identifier == "f") {
+			std::vector<std::string> v1 = split(tokens[1], '/');
+			std::vector<std::string> v2 = split(tokens[2], '/');
+			std::vector<std::string> v3 = split(tokens[3], '/');
 			// get the vertex indices required. This changes the vertices to be 0 indexed
-			int vIndex1 = std::stoi(tokens[1].substr(0, tokens[1].length() - 1)) - 1;
-			int vIndex2 = std::stoi(tokens[2].substr(0, tokens[2].length() - 1)) - 1;
-			int vIndex3 = std::stoi(tokens[3].substr(0, tokens[3].length() - 1)) - 1;
-			ModelTriangle parsed(vIndex1, vIndex2, vIndex3, currentColor);
-			
+			int vIndex1 = std::stoi(v1[0]) - 1;
+			int vIndex2 = std::stoi(v2[0]) - 1;
+			int vIndex3 = std::stoi(v3[0]) - 1;
+			ModelTriangle parsed;
+			if (v1[1] == "") {
+				parsed = ModelTriangle(vIndex1, vIndex2, vIndex3, currentColor);
+				parsed.texturePoints = { -1,-1,-1 };
+			}
+			else {
+				int tIndex1 = std::stoi(v1[1]) - 1;
+				int tIndex2 = std::stoi(v2[1]) - 1;
+				int tIndex3 = std::stoi(v3[1]) - 1;
+				parsed = ModelTriangle(vIndex1, vIndex2, vIndex3, tIndex1, tIndex2, tIndex3);
+			}
 			loadedTriangles.push_back(parsed);
 			vertexToTriangles[vIndex1].insert(loadedTriangles.size() - 1);
+			vertexToTriangles[vIndex2].insert(loadedTriangles.size() - 1);
+			vertexToTriangles[vIndex3].insert(loadedTriangles.size() - 1);
 		}
 		else if (identifier == "usemtl") {
 			currentColor = supportedColors[tokens[1]];
@@ -54,7 +72,7 @@ PolygonData FileReader::readOBJFile(std::string filename, float scaleFactor) {
 	}
 
 	inputStream.close();
-	PolygonData output = { vertexToTriangles, loadedTriangles, loadedVertices };
+	PolygonData output = { vertexToTriangles, loadedTriangles, loadedVertices, loadedTextures };
 	return output;
 }
 

@@ -9,11 +9,12 @@
 
 struct ModelTriangle {
 	std::array<int, 3> vertices{};
-	std::array<TexturePoint, 3> texturePoints{};
+	std::array<int, 3> texturePoints{};
 	Colour colour{};
 	glm::vec3 normal{};
 
 	ModelTriangle();
 	ModelTriangle(int v1Index, int v2Index, int v3Index, Colour trigColour);
+	ModelTriangle(int v1Index, int v2Index, int v3Index, int t1Index, int t2Index, int t3Index);
 	friend std::ostream &operator<<(std::ostream &os, const ModelTriangle &triangle);
 };
