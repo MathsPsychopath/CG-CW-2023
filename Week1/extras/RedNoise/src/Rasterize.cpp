@@ -42,7 +42,7 @@ namespace {
 	}
 
 	// gets the specific texture pixel given map and relative coordinate of original
-	uint32_t getTexture(BarycentricCoordinates coordinates, std::array<CanvasPoint, 3> sortedVertices, TextureMap textures) {
+	uint32_t getTexture(BarycentricCoordinates coordinates, std::array<CanvasPoint, 3> sortedVertices, TextureMap& textures) {
 		int width = textures.width;
 		int height = textures.height;
 		glm::vec2 textureA(sortedVertices[0].texturePoint.x, sortedVertices[0].texturePoint.y);
@@ -125,7 +125,7 @@ void Rasterize::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle tri
 	}
 }
 
-void Rasterize::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, TextureMap textures, std::vector<std::vector<float>>& zDepth) {
+void Rasterize::drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, TextureMap& textures, std::vector<std::vector<float>>& zDepth) {
 	// translate vertices to interface type
 	std::array<CanvasPoint, 3> canvasVertices = { triangle.v0(), triangle.v1(), triangle.v2() };
 

@@ -9,7 +9,7 @@
 #include "Raytrace.h"
 #include "Lighting.h"
 
-void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type, TextureMap textures) {
+void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type, TextureMap& textures) {
 	window.clearPixels();
 	glm::mat3 viewMatrix = camera.lookAt({ 0,0,0 }); 
 	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
@@ -86,7 +86,12 @@ void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, glm::vec3
 
 			auto& vertices = intersection.intersectedTriangle.vertices;
 			BarycentricCoordinates barycentric = getGouraudBarycentric(objects, intersection.triangleIndex, intersection.intersectionPoint);
-			
+			// apply texture map if necessary
+			if (intersection.intersectedTriangle.texturePoints[0] != -1) {
+				//objects.
+			}
+
+			// apply interpolated lighting from each vertex
 			Colour finalColor = intersection.intersectedTriangle.colour + 
 				objects.loadedVertices[vertices[0]].renderedColor * barycentric.A +
 				objects.loadedVertices[vertices[1]].renderedColor * barycentric.B + 
