@@ -3,9 +3,9 @@
 RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPosition, glm::vec3 rayDirection, PolygonData& objects, int excludeID, float lightDistance) {
 	RayTriangleIntersection closest;
 	closest.distanceFromCamera = std::numeric_limits<float>::max();
-	int index = 0;
 	closest.triangleIndex = -1;
 	for (int triangleIndex = 0; triangleIndex < objects.loadedTriangles.size(); triangleIndex++) {
+		if (triangleIndex == excludeID) continue;
 		glm::vec3 e0 = objects.getTriangleVertexPosition(triangleIndex, 1) - objects.getTriangleVertexPosition(triangleIndex, 0);
 		glm::vec3 e1 = objects.getTriangleVertexPosition(triangleIndex, 2) - objects.getTriangleVertexPosition(triangleIndex, 0);
 		glm::vec3 SPVector = cameraPosition - objects.getTriangleVertexPosition(triangleIndex, 0);
@@ -18,12 +18,11 @@ RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPo
 		// assert validity check
 		if (u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0 && u + v <= 1.0) {
 			// get the closest triangle to camera
-			if (t > lightDistance || t > closest.distanceFromCamera || t < 0 || index == excludeID) {
-				index++;
+			if (t > lightDistance || t > closest.distanceFromCamera || t < 0) {
 				continue;
 			}
 			closest.distanceFromCamera = t;
-			closest.triangleIndex = index++;
+			closest.triangleIndex = triangleIndex;
 			closest.intersectedTriangle = objects.loadedTriangles[triangleIndex];
 			closest.intersectionPoint = cameraPosition + t * rayDirection;
 		}

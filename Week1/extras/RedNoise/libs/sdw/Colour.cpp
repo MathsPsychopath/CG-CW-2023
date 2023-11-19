@@ -40,15 +40,8 @@ void Colour::operator+=(float highlight) {
 
 Colour Colour::operator+(Colour other) {
 	Colour result;
-	result.red = glm::min(this->red + other.red, 255);
-	result.green = glm::min(this->green + other.green, 255);
-	result.blue = glm::min(this->blue + other.blue, 255);
+	result.red = glm::clamp(this->red + other.red, 0, 255);
+	result.green = glm::clamp(this->green + other.green, 0, 255);
+	result.blue = glm::clamp(this->blue + other.blue, 0, 255);
 	return result;
-}
-
-void Colour::applyAmbience(float ambientLight, Colour original) {
-	original *= ambientLight;
-	this->red = glm::clamp(this->red, original.red, 255);
-	this->green = glm::clamp(this->green, original.green, 255);
-	this->blue = glm::clamp(this->blue, original.blue, 255);
 }
