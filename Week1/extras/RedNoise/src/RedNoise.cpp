@@ -59,7 +59,7 @@ BarycentricCoordinates getGouraudBarycentric(PolygonData& objects, int triangleI
 	return result;
 }
 
-void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, glm::vec3 lightPosition, bool useShadow) {
+void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition, bool useShadow) {
 	window.clearPixels();
 	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
 	for (int y = 0; y < HEIGHT; y++) {
@@ -86,13 +86,18 @@ void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, glm::vec3
 
 			auto& vertices = intersection.intersectedTriangle.vertices;
 			BarycentricCoordinates barycentric = getGouraudBarycentric(objects, intersection.triangleIndex, intersection.intersectionPoint);
+			Colour baseColor = intersection.intersectedTriangle.colour;
 			// apply texture map if necessary
 			if (intersection.intersectedTriangle.texturePoints[0] != -1) {
-				//objects.
+				std::array<glm::vec2, 3> textureVertices = objects.getTextureVertices(intersection.triangleIndex);
+				glm::vec2 coordinate = barycentric.A * textureVertices[0] + barycentric.B * textureVertices[1] + barycentric.C * textureVertices[2];
+				baseColor = Colour(textures.pixels[glm::floor(glm::max(coordinate.x, 0.0f)) +
+					glm::floor(glm::max(coordinate.y, 0.0f) * textures.width)
+				]);
 			}
 
 			// apply interpolated lighting from each vertex
-			Colour finalColor = intersection.intersectedTriangle.colour + 
+			Colour finalColor = baseColor + 
 				objects.loadedVertices[vertices[0]].renderedColor * barycentric.A +
 				objects.loadedVertices[vertices[1]].renderedColor * barycentric.B + 
 				objects.loadedVertices[vertices[2]].renderedColor * barycentric.C;
@@ -150,7 +155,7 @@ void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderT
 void preprocess(PolygonData& objects, glm::vec3 lightPosition, glm::vec3 cameraPosition, LightOptions& lighting, bool& hasParametersChanged) {
 	hasParametersChanged = false;
 	Colour globalAmbientColor(30, 20, 10);
-	Colour globalLightColor(255, 255, 255);
+	Colour globalLightColor(200, 200, 200);
 	for (auto& vertex : objects.loadedVertices) {
 		glm::vec3 lightDirection = glm::normalize(lightPosition - glm::vec3(vertex));
 		float lightDistance = glm::distance(lightPosition, glm::vec3(vertex));
@@ -162,8 +167,8 @@ void preprocess(PolygonData& objects, glm::vec3 lightPosition, glm::vec3 cameraP
 
 		// calculate the proximity lighting for vertex
 		if (lighting.useProximity) {
-			float lightIntensity = 5;
-			float illumination = (lightIntensity / (4 * glm::pi<float>() * glm::pow(lightDistance, 2)));
+			float lightIntensity = 1;
+			float illumination = (lightIntensity / (7 * glm::pi<float>() * glm::pow(lightDistance, 2)));
 			vertex.proximity = vertex.originalColor * illumination;
 		}
 		else vertex.proximity = Colour();
@@ -207,7 +212,9 @@ int main(int argc, char *argv[]) {
 
 	FileReader fr;
 	fr.readMTLFile("textured-cornell-box.mtl");
-	PolygonData objects = fr.readOBJFile("textured-cornell-box.obj", 0.35, {textures.width, textures.height});
+	//fr.readMTLFile("cornell-box.mtl");
+	PolygonData objects = fr.readOBJFile("textured-cornell-box.obj", 0.35, { textures.width, textures.height });
+	//PolygonData objects = fr.readOBJFile("cornell-box.obj", 0.35, {textures.width, textures.height});
 	//PolygonData objects = fr.readOBJFile("sphere.obj", 1);
 	if (objects.loadedTriangles.empty()) return -1;
 	
@@ -232,8 +239,8 @@ int main(int argc, char *argv[]) {
 		objects.loadedVertices[vertexIndex].normal = glm::normalize(vertexNormal);
 	}
 
-	RenderType renderer = RASTER;
-	LightOptions lighting(true, true, true, true, true);
+	RenderType renderer = RAYTRACE;
+	LightOptions lighting(true, false, false, false,false);
 	glm::vec3 lightPosition = { 0, 0.5, 0.25 };
 	//glm::vec3 lightPosition = { 1, 5, 1 };
 	bool hasParametersChanged = true;
@@ -244,7 +251,7 @@ int main(int argc, char *argv[]) {
 		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lighting, lightPosition, hasParametersChanged);
 		if (renderer == RAYTRACE) {
 			if (hasParametersChanged) preprocess(objects, lightPosition, camera.cameraPosition, lighting, hasParametersChanged);
-			draw(window, camera, objects, lightPosition, lighting.useShadow);
+			draw(window, camera, objects, textures, lightPosition, lighting.useShadow);
 		}
 		else drawInterpolationRenders(window, camera, objects, renderer, textures);
 

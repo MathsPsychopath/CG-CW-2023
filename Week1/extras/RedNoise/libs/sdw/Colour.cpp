@@ -5,6 +5,7 @@ Colour::Colour(int r, int g, int b) : red(r), green(g), blue(b) {}
 Colour::Colour(std::string n, int r, int g, int b) :
 		name(std::move(n)),
 		red(r), green(g), blue(b) {}
+Colour::Colour(uint32_t argb) : red((argb >> 16) & 0xff), green((argb >> 8) & 0xff), blue(argb & 0xff) {}
 
 std::ostream &operator<<(std::ostream &os, const Colour &colour) {
 	os << colour.name << " ["

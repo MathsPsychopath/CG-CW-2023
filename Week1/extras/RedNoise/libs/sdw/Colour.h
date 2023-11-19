@@ -12,6 +12,7 @@ struct Colour {
 	Colour();
 	Colour(int r, int g, int b);
 	Colour(std::string n, int r, int g, int b);
+	Colour(uint32_t argb);
 
 	void operator*=(float colorScale);
 	Colour operator*(float colorScale);

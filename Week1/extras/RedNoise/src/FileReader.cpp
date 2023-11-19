@@ -60,6 +60,7 @@ PolygonData FileReader::readOBJFile(std::string filename, float scaleFactor, glm
 				int tIndex2 = std::stoi(v2[1]) - 1;
 				int tIndex3 = std::stoi(v3[1]) - 1;
 				parsed = ModelTriangle(vIndex1, vIndex2, vIndex3, tIndex1, tIndex2, tIndex3);
+				parsed.colour = Colour();
 			}
 			loadedTriangles.push_back(parsed);
 			vertexToTriangles[vIndex1].insert(loadedTriangles.size() - 1);

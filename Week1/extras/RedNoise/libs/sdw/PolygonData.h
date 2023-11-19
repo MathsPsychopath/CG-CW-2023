@@ -19,4 +19,6 @@ struct PolygonData {
 	GouraudVertex& getTriangleVertex(int triangleIndex, int triangleVertexIndex);
 
 	glm::vec3 getTriangleVertexPosition(int triangleIndex, int triangleVertexIndex);
+
+	std::array<glm::vec2, 3> getTextureVertices(int triangleIndex);
 };
