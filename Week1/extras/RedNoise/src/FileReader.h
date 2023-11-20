@@ -1,19 +1,18 @@
 #pragma once
-#include <vector>
 #include <ModelTriangle.h>
-#include <unordered_map>
 #include <string>
 #include <fstream>
 #include <Utils.h>
+#include <PolygonData.h>
+#include <sstream>
 
 class FileReader {
 public:
 	std::unordered_map<std::string, Colour> supportedColors;
-	std::unordered_map<std::string, glm::vec3> loadedVertices;
 
 	FileReader();
 
-	std::vector<ModelTriangle> readOBJFile(std::string filename, float scaleFactor);
+	PolygonData readOBJFile(std::string filename, float scaleFactor, glm::vec2 textureScales = glm::vec2{1,1});
 
 	void readMTLFile(std::string filename);
 };

@@ -12,12 +12,14 @@ struct Colour {
 	Colour();
 	Colour(int r, int g, int b);
 	Colour(std::string n, int r, int g, int b);
+	Colour(uint32_t argb);
 
 	void operator*=(float colorScale);
+	Colour operator*(float colorScale);
 	void operator+=(float highlight);
+	Colour operator+(Colour other);
 
 	uint32_t asNumeric();
-	void applyAmbience(float ambientLight, Colour original);
 };
 
 std::ostream &operator<<(std::ostream &os, const Colour &colour);

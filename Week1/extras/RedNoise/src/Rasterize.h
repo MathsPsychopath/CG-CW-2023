@@ -33,7 +33,7 @@ namespace Rasterize {
 	void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, Colour color, std::vector<std::vector<float>>& zDepth);
 
 	// rasterizes a textured triangle
-	void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, TextureMap textures, std::vector<std::vector<float>>& zDepth);
+	void drawRasterizedTriangle(DrawingWindow& window, CanvasTriangle triangle, TextureMap& textures, std::vector<std::vector<float>>& zDepth);
 
 	// computes the relative coordinates of each pixel in the triangle
 	BarycentricCoordinates barycentric(const std::array<CanvasPoint, 3>& sortedVertices, glm::vec2 encodedVertex);
