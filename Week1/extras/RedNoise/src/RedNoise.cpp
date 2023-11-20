@@ -10,6 +10,7 @@
 #include "Lighting.h"
 
 Colour globalAmbientColor(10, 10, 10);
+Colour globalLightColor(255, 255, 255);
 LightOptions lighting( true, true, true, true, true, true);
 
 void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type, TextureMap& textures) {
@@ -62,6 +63,33 @@ BarycentricCoordinates getGouraudBarycentric(PolygonData& objects, int triangleI
 	return result;
 }
 
+glm::vec2 getLightAttributes(glm::vec3 normal, glm::vec3 lightPosition, glm::vec3 cameraPosition, glm::vec3 position) {
+	glm::vec2 output;
+	glm::vec3 lightDirection = glm::normalize(lightPosition - position);
+	float lightDistance = glm::distance(lightPosition, position);
+
+	float proximityComponent = 1;
+	if (lighting.useProximity) {
+		float lightIntensity = 5;
+		proximityComponent = lightIntensity / (4 * glm::pi<float>() * glm::pow(lightDistance, 2));
+	}
+
+	float incidentComponent = 1;
+	if (lighting.useIncidence) {
+		incidentComponent = glm::max(glm::dot(normal, lightDirection), 0.0f);
+	}
+	float diffuseComponent = proximityComponent * incidentComponent; // diffuse
+
+	float specularComponent = 0;
+	if (lighting.useSpecular) {
+		glm::vec3 reflection = glm::reflect(-lightDirection, normal);
+		float specularity = glm::max(glm::dot(reflection, glm::normalize(cameraPosition - position)), 0.0f);
+		float shininess = 256;
+		specularComponent = glm::pow(specularity, shininess);
+	}
+	return { diffuseComponent, specularComponent };
+}
+
 void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition, bool useShadow) {
 	window.clearPixels();
 	//glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,1,0 }));
@@ -96,6 +124,8 @@ void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMa
 			auto& vertices = intersection.intersectedTriangle.vertices;
 			BarycentricCoordinates barycentric = getGouraudBarycentric(objects, intersection.triangleIndex, intersection.intersectionPoint);
 			Colour baseColor = intersection.intersectedTriangle.colour;
+			Colour finalColor;
+
 			// apply texture map if necessary
 			if (intersection.intersectedTriangle.texturePoints[0] != -1) {
 				std::array<glm::vec2, 3> textureVertices = objects.getTextureVertices(intersection.triangleIndex);
@@ -103,13 +133,27 @@ void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMa
 				baseColor = Colour(textures.pixels[glm::floor(glm::max(coordinate.x, 0.0f)) +
 					glm::floor(glm::max(coordinate.y, 0.0f) * textures.width)
 				]);
+				GouraudVertex vertex1 = objects.loadedVertices[vertices[0]];
+				GouraudVertex vertex2 = objects.loadedVertices[vertices[1]];
+				GouraudVertex vertex3 = objects.loadedVertices[vertices[2]];
+
+				glm::vec2 weight1 = barycentric.A * getLightAttributes(
+					vertex1.normal, lightPosition, camera.cameraPosition, vertex1.position);
+				glm::vec2 weight2 = barycentric.B * getLightAttributes(
+					vertex2.normal, lightPosition, camera.cameraPosition, vertex2.position);
+				glm::vec2 weight3 = barycentric.C * getLightAttributes(
+					vertex3.normal, lightPosition, camera.cameraPosition, vertex3.position);
+				glm::vec2 finalAttributes = (weight1 + weight2 + weight3);
+				finalColor = globalAmbientColor + baseColor * finalAttributes.x + globalLightColor * finalAttributes.y;
+			}
+			else {
+				// apply interpolated lighting from each vertex
+				finalColor = 
+					objects.loadedVertices[vertices[0]].renderedColor * barycentric.A +
+					objects.loadedVertices[vertices[1]].renderedColor * barycentric.B + 
+					objects.loadedVertices[vertices[2]].renderedColor * barycentric.C;
 			}
 
-			// apply interpolated lighting from each vertex
-			Colour finalColor = 
-				objects.loadedVertices[vertices[0]].renderedColor * barycentric.A +
-				objects.loadedVertices[vertices[1]].renderedColor * barycentric.B + 
-				objects.loadedVertices[vertices[2]].renderedColor * barycentric.C;
 			window.setPixelColour(x, y, finalColor.asNumeric());
 			window.renderFrame();
 		}
@@ -162,51 +206,24 @@ void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderT
 	}
 }
 
-//std::array<float, 3> getLightAttributes(glm::vec3 normal, glm::vec3 light, glm::vec3 viewDirection, ) {
-//
-//}
-
 void preprocess(PolygonData& objects, glm::vec3 lightPosition, glm::vec3 cameraPosition, bool& hasParametersChanged) {
 	hasParametersChanged = false;
-	Colour globalLightColor(255, 255, 255);
 	for (auto& vertex : objects.loadedVertices) {
 		glm::vec3 lightDirection = glm::normalize(lightPosition - glm::vec3(vertex));
 		float lightDistance = glm::distance(lightPosition, glm::vec3(vertex));
 
 		if (lighting.useAmbience) vertex.ambient = globalAmbientColor;
 
-		// calculate the proximity lighting for vertex
-		if (lighting.useProximity) {
-			float lightIntensity = 5;
-			float illumination = (lightIntensity / (4 * glm::pi<float>() * glm::pow(lightDistance, 2)));
-			vertex.proximity = illumination;
-		}
-		else vertex.proximity = 1;
+		auto attributes = getLightAttributes(vertex.normal, lightPosition,
+			cameraPosition, glm::vec3(vertex));
 
-		// calculate the incidence lighting for vertex
-		if (lighting.useIncidence) {
-			float incidentAngle = glm::dot(vertex.normal, lightDirection);
-			vertex.incidental = glm::max(incidentAngle, 0.0f);
-		}
-		else vertex.incidental = 1;
-
-		vertex.diffuse = vertex.originalColor * vertex.incidental * vertex.proximity;
-
-		// calculate the specular lighting for vertex
-		if (lighting.useSpecular) {
-			glm::vec3 reflection = glm::reflect(-lightDirection, vertex.normal);
-			glm::vec3 viewDirection = glm::normalize(cameraPosition - glm::vec3(vertex));
-			float specularity = glm::dot(reflection, viewDirection);
-			float shininess = 256;
-			vertex.specular = globalLightColor * glm::pow(glm::max(specularity, 0.0f), shininess);
-		}
-		else vertex.specular = Colour();
+		vertex.diffuse = vertex.originalColor * attributes.x;
+		vertex.specular = globalLightColor * attributes.y;
 
 		vertex.renderedColor = (vertex.ambient + vertex.diffuse + vertex.specular);
 		std::cout << vertex << std::endl;
 
 	}
-	std::cout << "done" << std::endl;
 }
 
 int main(int argc, char *argv[]) {
