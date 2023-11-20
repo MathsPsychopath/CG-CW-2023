@@ -12,7 +12,7 @@ public:
 
 	FileReader();
 
-	PolygonData readOBJFile(std::string filename, float scaleFactor, glm::vec2 textureScales);
+	PolygonData readOBJFile(std::string filename, float scaleFactor, glm::vec2 textureScales = glm::vec2{1,1});
 
 	void readMTLFile(std::string filename);
 };

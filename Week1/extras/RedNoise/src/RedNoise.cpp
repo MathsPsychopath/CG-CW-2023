@@ -9,8 +9,8 @@
 #include "Raytrace.h"
 #include "Lighting.h"
 
-Colour globalAmbientColor(90, 20, 10);
-LightOptions lighting(false, true, true, true, false);
+Colour globalAmbientColor(10, 10, 10);
+LightOptions lighting( true, true, true, true, true, true);
 
 void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type, TextureMap& textures) {
 	window.clearPixels();
@@ -64,6 +64,7 @@ BarycentricCoordinates getGouraudBarycentric(PolygonData& objects, int triangleI
 
 void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition, bool useShadow) {
 	window.clearPixels();
+	//glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,1,0 }));
 	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
 	for (int y = 0; y < HEIGHT; y++) {
 		for (int x = 0; x < WIDTH; x++) {
@@ -161,9 +162,13 @@ void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderT
 	}
 }
 
+//std::array<float, 3> getLightAttributes(glm::vec3 normal, glm::vec3 light, glm::vec3 viewDirection, ) {
+//
+//}
+
 void preprocess(PolygonData& objects, glm::vec3 lightPosition, glm::vec3 cameraPosition, bool& hasParametersChanged) {
 	hasParametersChanged = false;
-	Colour globalLightColor(200, 200, 200);
+	Colour globalLightColor(255, 255, 255);
 	for (auto& vertex : objects.loadedVertices) {
 		glm::vec3 lightDirection = glm::normalize(lightPosition - glm::vec3(vertex));
 		float lightDistance = glm::distance(lightPosition, glm::vec3(vertex));
@@ -215,7 +220,7 @@ int main(int argc, char *argv[]) {
 	TextureMap textures = TextureMap("texture.ppm");
 
 	Camera camera(0.0, 0.0, 4.0);
-	//Camera camera(0.0, 5.5, 4.0);
+	//Camera camera(0.0, 4, 4.0);
 
 	FileReader fr;
 	fr.readMTLFile("textured-cornell-box.mtl");
@@ -232,7 +237,7 @@ int main(int argc, char *argv[]) {
 		glm::vec3 e1 = objects.getTriangleVertexPosition(triangleIndex, 2) -
 			objects.getTriangleVertexPosition(triangleIndex, 0);
 		objects.loadedTriangles[triangleIndex].normal = glm::normalize(glm::cross(e0, e1)); // winding order for cornell box
-		//objects.loadedTriangles[triangleIndex].normal = glm::normalize(glm::cross(e1, e0)); // winding order for sphere
+		//objects.loadedTriangles[triangleIndex].normal = glm::normalize(glm::cross(e1, e0)); // alt just in case
 	}
 	
 	// normalise all vertex normal sums.
@@ -247,9 +252,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	RenderType renderer = RAYTRACE;
-	LightOptions lighting(true, true, true, true,false);
 	glm::vec3 lightPosition = { 0, 0.5, 0.25 };
-	//glm::vec3 lightPosition = { 1, 5, 1 };
+	//glm::vec3 lightPosition = { 0.25, 3, 1.25 };
 	bool hasParametersChanged = true;
 	preprocess(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 
