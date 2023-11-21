@@ -10,3 +10,5 @@ struct LightOptions {
 
 	LightOptions(bool initAmb, bool initShadow, bool initProx, bool initInc, bool initSpec, bool initPhong);
 };
+
+extern LightOptions lighting;
