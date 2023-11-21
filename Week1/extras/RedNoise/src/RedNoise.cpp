@@ -9,9 +9,10 @@
 #include "Raytrace.h"
 #include "Lighting.h"
 
-Colour globalAmbientColor(70, 20, 20);
+//Colour globalAmbientColor(70, 20, 20);
+Colour globalAmbientColor(20, 20, 20);
 Colour globalLightColor(255, 255, 255);
-LightOptions lighting( true, false, true, true, true, true);
+LightOptions lighting( true, true, false, false, true, false);
 
 void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type, TextureMap& textures) {
 	window.clearPixels();
@@ -117,7 +118,8 @@ void useGouraud(DrawingWindow& window, Camera& camera, PolygonData& objects, Tex
 	window.clearPixels();
 	//glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,1,0 }));
 	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
-	for (int y = 0; y < HEIGHT; y++) {
+	//for (int y = 0; y < HEIGHT; y++) {
+	for (int y = HEIGHT - 1; y > -1; y--) {
 		for (int x = 0; x < WIDTH; x++) {
 			// normalise the canvas coordinates into real world coordinates
 			glm::vec3 canvasPosition = Raytrace::getCanvasPosition(camera, CanvasPoint(x, y), inverseViewMatrix);
@@ -142,19 +144,29 @@ void useGouraud(DrawingWindow& window, Camera& camera, PolygonData& objects, Tex
 
 			auto vertices = intersection.intersectedTriangle.vertices;
 			glm::vec3 barycentric = intersection.barycentric;
+			float cameraDistance = intersection.distanceFromCamera;
 			Colour baseColor = intersection.intersectedTriangle.colour;
 			Colour finalColor;
 
 			// apply texture map if necessary
 			if (intersection.intersectedTriangle.texturePoints[0] != -1) {
 				std::array<glm::vec2, 3> textureVertices = objects.getTextureVertices(intersection.triangleIndex);
-				glm::vec2 coordinate = barycentric[2] * textureVertices[0] + barycentric[0] * textureVertices[1] + barycentric[1] * textureVertices[2];
+				GouraudVertex vertex1 = objects.loadedVertices[vertices[0]];
+				GouraudVertex vertex2 = objects.loadedVertices[vertices[1]];
+				GouraudVertex vertex3 = objects.loadedVertices[vertices[2]];
+				textureVertices[0] /= cameraDistance;
+				textureVertices[1] /= cameraDistance;
+				textureVertices[2] /= cameraDistance;
+				float interpolatedDepth = barycentric[0] / glm::abs(cameraDistance) 
+					+ barycentric[1] / glm::abs(cameraDistance) 
+					+ barycentric[2] / glm::abs(cameraDistance);
+				glm::vec2 coordinate = barycentric[0] * textureVertices[0] 
+					+ barycentric[1] * textureVertices[1]  
+					+ barycentric[2] * textureVertices[2];
+				coordinate *= (1 / interpolatedDepth);
 				baseColor = Colour(textures.pixels[glm::floor(glm::max(coordinate.x, 0.0f)) +
-					glm::floor(glm::max(coordinate.y, 0.0f) * textures.width)
+					glm::floor(glm::max(coordinate.y, 0.0f)) * textures.width
 				]);
-				GouraudVertex vertex1 = objects.loadedVertices[vertices[2]];
-				GouraudVertex vertex2 = objects.loadedVertices[vertices[0]];
-				GouraudVertex vertex3 = objects.loadedVertices[vertices[1]];
 
 				glm::vec2 weight1 = barycentric[2] * getLightAttributes(
 					vertex1.normal, lightPosition, camera.cameraPosition, vertex1.position);
@@ -162,6 +174,7 @@ void useGouraud(DrawingWindow& window, Camera& camera, PolygonData& objects, Tex
 					vertex2.normal, lightPosition, camera.cameraPosition, vertex2.position);
 				glm::vec2 weight3 = barycentric[1] * getLightAttributes(
 					vertex3.normal, lightPosition, camera.cameraPosition, vertex3.position);
+
 				glm::vec2 finalAttributes = (weight1 + weight2 + weight3);
 				finalColor = globalAmbientColor + baseColor * finalAttributes.x /*+ globalLightColor * finalAttributes.y*/ ;
 			}
@@ -255,15 +268,15 @@ int main(int argc, char *argv[]) {
 	triangle.v2().texturePoint = TexturePoint(65, 330);
 	TextureMap textures = TextureMap("texture.ppm");
 
-	//Camera camera(0.0, 0.0, 4.0);
-	Camera camera(0.0, 4.5, 6);
+	Camera camera(0.0, 0.0, 4.0);
+	//Camera camera(0.0, 4.5, 6);
 
 	FileReader fr;
 	fr.readMTLFile("textured-cornell-box.mtl");
 	//fr.readMTLFile("cornell-box.mtl");
-	//PolygonData objects = fr.readOBJFile("textured-cornell-box.obj", 0.35, { textures.width, textures.height });
+	PolygonData objects = fr.readOBJFile("textured-cornell-box.obj", 0.35, { textures.width, textures.height });
 	//PolygonData objects = fr.readOBJFile("cornell-box.obj", 0.35, {textures.width, textures.height});
-	PolygonData objects = fr.readOBJFile("sphere.obj", 1);
+	//PolygonData objects = fr.readOBJFile("sphere.obj", 1);
 	if (objects.loadedTriangles.empty()) return -1;
 	
 	// calculate normals
@@ -287,9 +300,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	RenderType renderer = RAYTRACE;
-	//glm::vec3 lightPosition = { 0, 0.5, 0.25 };
+	glm::vec3 lightPosition = { 0, 0.5, 0.25 };
 	//glm::vec3 lightPosition = { 0.5, 2.5, 2 };
-	glm::vec3 lightPosition = { 0.5, 2.5, 2 };
+	//glm::vec3 lightPosition = { 0.5, 2.5, 2 };
 	bool hasParametersChanged = true;
 	if (!lighting.usePhong) preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 
