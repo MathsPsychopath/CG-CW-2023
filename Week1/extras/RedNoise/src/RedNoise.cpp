@@ -9,9 +9,10 @@
 #include "Raytrace.h"
 #include "Lighting.h"
 
-Colour globalAmbientColor(10, 10, 10);
+//Colour globalAmbientColor(70, 20, 20);
+Colour globalAmbientColor(20, 20, 20);
 Colour globalLightColor(255, 255, 255);
-LightOptions lighting( true, true, true, true, true, true);
+LightOptions lighting( true, true, false, false, true, false);
 
 void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type, TextureMap& textures) {
 	window.clearPixels();
@@ -41,28 +42,6 @@ void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData
 	}
 }
 
-BarycentricCoordinates getGouraudBarycentric(PolygonData& objects, int triangleIndex, glm::vec3 position) {
-	GouraudVertex A = objects.getTriangleVertex(triangleIndex, 0);
-	GouraudVertex B = objects.getTriangleVertex(triangleIndex, 1);
-	GouraudVertex C = objects.getTriangleVertex(triangleIndex, 2);
-
-	glm::vec3 AB = glm::vec3(B) - glm::vec3(A);
-	glm::vec3 AC = glm::vec3(C) - glm::vec3(A);
-	glm::vec3 PA = glm::vec3(A) - position;
-	glm::vec3 PB = glm::vec3(B) - position;
-	glm::vec3 PC = glm::vec3(C) - position;
-
-	float areaABC = glm::length(glm::cross(AB, AC));
-	float areaPBC = glm::length(glm::cross(PB, PC));
-	float areaPCA = glm::length(glm::cross(PC, PA));
-
-	BarycentricCoordinates result{};
-	result.A = areaPBC / areaABC;
-	result.B = areaPCA / areaABC;
-	result.C = 1 - result.A - result.B;
-	return result;
-}
-
 glm::vec2 getLightAttributes(glm::vec3 normal, glm::vec3 lightPosition, glm::vec3 cameraPosition, glm::vec3 position) {
 	glm::vec2 output;
 	glm::vec3 lightDirection = glm::normalize(lightPosition - position);
@@ -76,7 +55,8 @@ glm::vec2 getLightAttributes(glm::vec3 normal, glm::vec3 lightPosition, glm::vec
 
 	float incidentComponent = 1;
 	if (lighting.useIncidence) {
-		incidentComponent = glm::max(glm::dot(normal, lightDirection), 0.0f);
+		//incidentComponent = glm::max(glm::dot(normal, lightDirection)*3, 0.0f);
+		incidentComponent = glm::dot(normal, lightDirection)*0.5;
 	}
 	float diffuseComponent = proximityComponent * incidentComponent; // diffuse
 
@@ -84,22 +64,63 @@ glm::vec2 getLightAttributes(glm::vec3 normal, glm::vec3 lightPosition, glm::vec
 	if (lighting.useSpecular) {
 		glm::vec3 reflection = glm::reflect(-lightDirection, normal);
 		float specularity = glm::max(glm::dot(reflection, glm::normalize(cameraPosition - position)), 0.0f);
-		float shininess = 256;
+		float shininess = 128;
 		specularComponent = glm::pow(specularity, shininess);
 	}
 	return { diffuseComponent, specularComponent };
 }
 
-void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition, bool useShadow) {
+void usePhong(DrawingWindow& window, Camera& camera, PolygonData& objects, glm::vec3 lightPosition) {
+	window.clearPixels();
+	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,1,0 }));
+	//glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
+	for (int y = 0; y < HEIGHT; y++) {
+		for (int x = 0; x < WIDTH; x++) {
+			
+			// normalise the canvas coordinates into real world coordinates
+			glm::vec3 canvasPosition = Raytrace::getCanvasPosition(camera, CanvasPoint(x, y), inverseViewMatrix);
+
+			glm::vec3 direction = glm::normalize(camera.cameraPosition - canvasPosition);
+
+			// fire initial ray into scene
+			RayTriangleIntersection intersection = Raytrace::getClosestValidIntersection(camera.cameraPosition, direction, objects);
+			if (intersection.triangleIndex == -1) {
+				continue;
+			}
+
+			// fire shadow ray into light
+			glm::vec3 offsetPoint = intersection.intersectionPoint + 0.01f * intersection.intersectedTriangle.normal;
+			glm::vec3 lightDirection = glm::normalize(lightPosition - offsetPoint);
+			float lightDistance = glm::length(lightPosition - offsetPoint);
+			glm::vec3 barycentric = intersection.barycentric;
+			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
+			if (lighting.useShadow && shadowIntersection.triangleIndex != -1) {
+				window.setPixelColour(x, y, lighting.useAmbience ? globalAmbientColor.asNumeric() : 0);
+				continue;
+			}
+			auto vertices = intersection.intersectedTriangle.vertices;
+
+			glm::vec3 interpolatedNormal = glm::normalize(objects.loadedVertices[vertices[0]].normal * barycentric[2] +
+				objects.loadedVertices[vertices[1]].normal * barycentric[0] +
+				objects.loadedVertices[vertices[2]].normal * barycentric[1]);
+
+			glm::vec2 lightAttributes = getLightAttributes(interpolatedNormal, lightPosition, camera.cameraPosition, intersection.intersectionPoint);
+			Colour finalColor = lighting.useAmbience ? globalAmbientColor : Colour(0, 0, 0);
+			finalColor = finalColor + intersection.intersectedTriangle.colour * lightAttributes.x +
+				globalLightColor * lightAttributes.y;
+			window.setPixelColour(x, y, finalColor.asNumeric());
+			window.renderFrame();
+		}
+	}
+}
+
+void useGouraud(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition) {
 	window.clearPixels();
 	//glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,1,0 }));
 	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
-	for (int y = 0; y < HEIGHT; y++) {
+	//for (int y = 0; y < HEIGHT; y++) {
+	for (int y = HEIGHT - 1; y > -1; y--) {
 		for (int x = 0; x < WIDTH; x++) {
-			if (x == 210 && y == 28) {
-				std::cout << "here" << std::endl;
-
-			}
 			// normalise the canvas coordinates into real world coordinates
 			glm::vec3 canvasPosition = Raytrace::getCanvasPosition(camera, CanvasPoint(x, y), inverseViewMatrix);
 
@@ -116,42 +137,53 @@ void draw(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMa
 			glm::vec3 lightDirection = glm::normalize(lightPosition - offsetPoint);
 			float lightDistance = glm::length(lightPosition - offsetPoint);
 			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
-			if (useShadow && shadowIntersection.triangleIndex != -1) {
+			if (lighting.useShadow && shadowIntersection.triangleIndex != -1) {
 				window.setPixelColour(x, y, lighting.useAmbience ? globalAmbientColor.asNumeric() : 0);
 				continue;
 			}
 
-			auto& vertices = intersection.intersectedTriangle.vertices;
-			BarycentricCoordinates barycentric = getGouraudBarycentric(objects, intersection.triangleIndex, intersection.intersectionPoint);
+			auto vertices = intersection.intersectedTriangle.vertices;
+			glm::vec3 barycentric = intersection.barycentric;
+			float cameraDistance = intersection.distanceFromCamera;
 			Colour baseColor = intersection.intersectedTriangle.colour;
 			Colour finalColor;
 
 			// apply texture map if necessary
 			if (intersection.intersectedTriangle.texturePoints[0] != -1) {
 				std::array<glm::vec2, 3> textureVertices = objects.getTextureVertices(intersection.triangleIndex);
-				glm::vec2 coordinate = barycentric.A * textureVertices[0] + barycentric.B * textureVertices[1] + barycentric.C * textureVertices[2];
-				baseColor = Colour(textures.pixels[glm::floor(glm::max(coordinate.x, 0.0f)) +
-					glm::floor(glm::max(coordinate.y, 0.0f) * textures.width)
-				]);
 				GouraudVertex vertex1 = objects.loadedVertices[vertices[0]];
 				GouraudVertex vertex2 = objects.loadedVertices[vertices[1]];
 				GouraudVertex vertex3 = objects.loadedVertices[vertices[2]];
+				textureVertices[0] /= cameraDistance;
+				textureVertices[1] /= cameraDistance;
+				textureVertices[2] /= cameraDistance;
+				float interpolatedDepth = barycentric[0] / glm::abs(cameraDistance) 
+					+ barycentric[1] / glm::abs(cameraDistance) 
+					+ barycentric[2] / glm::abs(cameraDistance);
+				glm::vec2 coordinate = barycentric[0] * textureVertices[0] 
+					+ barycentric[1] * textureVertices[1]  
+					+ barycentric[2] * textureVertices[2];
+				coordinate *= (1 / interpolatedDepth);
+				baseColor = Colour(textures.pixels[glm::floor(glm::max(coordinate.x, 0.0f)) +
+					glm::floor(glm::max(coordinate.y, 0.0f)) * textures.width
+				]);
 
-				glm::vec2 weight1 = barycentric.A * getLightAttributes(
+				glm::vec2 weight1 = barycentric[2] * getLightAttributes(
 					vertex1.normal, lightPosition, camera.cameraPosition, vertex1.position);
-				glm::vec2 weight2 = barycentric.B * getLightAttributes(
+				glm::vec2 weight2 = barycentric[0] * getLightAttributes(
 					vertex2.normal, lightPosition, camera.cameraPosition, vertex2.position);
-				glm::vec2 weight3 = barycentric.C * getLightAttributes(
+				glm::vec2 weight3 = barycentric[1] * getLightAttributes(
 					vertex3.normal, lightPosition, camera.cameraPosition, vertex3.position);
+
 				glm::vec2 finalAttributes = (weight1 + weight2 + weight3);
-				finalColor = globalAmbientColor + baseColor * finalAttributes.x + globalLightColor * finalAttributes.y;
+				finalColor = globalAmbientColor + baseColor * finalAttributes.x /*+ globalLightColor * finalAttributes.y*/ ;
 			}
 			else {
 				// apply interpolated lighting from each vertex
 				finalColor = 
-					objects.loadedVertices[vertices[0]].renderedColor * barycentric.A +
-					objects.loadedVertices[vertices[1]].renderedColor * barycentric.B + 
-					objects.loadedVertices[vertices[2]].renderedColor * barycentric.C;
+					objects.loadedVertices[vertices[0]].renderedColor * barycentric[2] +
+					objects.loadedVertices[vertices[1]].renderedColor * barycentric[0] +
+					objects.loadedVertices[vertices[2]].renderedColor * barycentric[1];
 			}
 
 			window.setPixelColour(x, y, finalColor.asNumeric());
@@ -206,7 +238,7 @@ void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderT
 	}
 }
 
-void preprocess(PolygonData& objects, glm::vec3 lightPosition, glm::vec3 cameraPosition, bool& hasParametersChanged) {
+void preprocessGouraud(PolygonData& objects, glm::vec3 lightPosition, glm::vec3 cameraPosition, bool& hasParametersChanged) {
 	hasParametersChanged = false;
 	for (auto& vertex : objects.loadedVertices) {
 		glm::vec3 lightDirection = glm::normalize(lightPosition - glm::vec3(vertex));
@@ -237,7 +269,7 @@ int main(int argc, char *argv[]) {
 	TextureMap textures = TextureMap("texture.ppm");
 
 	Camera camera(0.0, 0.0, 4.0);
-	//Camera camera(0.0, 4, 4.0);
+	//Camera camera(0.0, 4.5, 6);
 
 	FileReader fr;
 	fr.readMTLFile("textured-cornell-box.mtl");
@@ -254,7 +286,6 @@ int main(int argc, char *argv[]) {
 		glm::vec3 e1 = objects.getTriangleVertexPosition(triangleIndex, 2) -
 			objects.getTriangleVertexPosition(triangleIndex, 0);
 		objects.loadedTriangles[triangleIndex].normal = glm::normalize(glm::cross(e0, e1)); // winding order for cornell box
-		//objects.loadedTriangles[triangleIndex].normal = glm::normalize(glm::cross(e1, e0)); // alt just in case
 	}
 	
 	// normalise all vertex normal sums.
@@ -270,19 +301,24 @@ int main(int argc, char *argv[]) {
 
 	RenderType renderer = RAYTRACE;
 	glm::vec3 lightPosition = { 0, 0.5, 0.25 };
-	//glm::vec3 lightPosition = { 0.25, 3, 1.25 };
+	//glm::vec3 lightPosition = { 0.5, 2.5, 2 };
+	//glm::vec3 lightPosition = { 0.5, 2.5, 2 };
 	bool hasParametersChanged = true;
-	preprocess(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
+	if (!lighting.usePhong) preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lightPosition, hasParametersChanged);
 		if (renderer == RAYTRACE) {
-			if (hasParametersChanged) preprocess(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
-			draw(window, camera, objects, textures, lightPosition, lighting.useShadow);
+			if (!lighting.usePhong) {
+				if (hasParametersChanged) preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
+				useGouraud(window, camera, objects, textures, lightPosition);
+			}
+			else {
+				usePhong(window, camera, objects, lightPosition);
+			}
 		}
 		else drawInterpolationRenders(window, camera, objects, renderer, textures);
-
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
 		window.renderFrame();
 	}

@@ -25,6 +25,7 @@ RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPo
 			closest.triangleIndex = triangleIndex;
 			closest.intersectedTriangle = objects.loadedTriangles[triangleIndex];
 			closest.intersectionPoint = cameraPosition + t * rayDirection;
+			closest.barycentric = glm::vec3{ u, v, 1 - (u + v) };
 		}
 	}
 	return closest;

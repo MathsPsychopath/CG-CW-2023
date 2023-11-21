@@ -40,7 +40,7 @@ PolygonData FileReader::readOBJFile(std::string filename, float scaleFactor, glm
 			vertexToTriangles[currentVertex++] = {};
 		}
 		else if (identifier == "vt") {
-			loadedTextures.push_back(TexturePoint(std::stof(tokens[1]) * textureScales.x, (1 - std::stof(tokens[2])) * textureScales.y));
+			loadedTextures.push_back(TexturePoint(std::stof(tokens[1]) * textureScales.x, (std::stof(tokens[2])) * textureScales.y));
 		}
 		else if (identifier == "f") {
 			std::vector<std::string> v1 = split(tokens[1], '/');
