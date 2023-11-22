@@ -7,6 +7,8 @@
 #include <PolygonData.h>
 #include <TextureMap.h>
 #include "Lighting.h"
+#include <thread>
+#include <sstream>
 
 namespace Raytrace {
 
@@ -14,6 +16,6 @@ namespace Raytrace {
 
 	void usePhong(DrawingWindow& window, Camera& camera, PolygonData& objects, glm::vec3 lightPosition);
 
-	void preprocessGouraud(PolygonData& objects, glm::vec3 lightPosition, glm::vec3 cameraPosition, bool& hasParametersChanged);
+	void preprocessGouraud(PolygonData& objects, glm::vec3& lightPosition, glm::vec3& cameraPosition, bool& hasParametersChanged);
 
 }

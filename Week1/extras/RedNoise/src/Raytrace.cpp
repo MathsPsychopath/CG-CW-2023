@@ -6,7 +6,7 @@ Colour globalLightColor(255, 255, 255);
 
 namespace {
 
-	glm::vec2 getLightAttributes(glm::vec3 normal, glm::vec3 lightPosition, glm::vec3 cameraPosition, glm::vec3 position) {
+	glm::vec2 getLightAttributes(glm::vec3& normal, glm::vec3& lightPosition, glm::vec3& cameraPosition, glm::vec3& position) {
 		glm::vec2 output;
 		glm::vec3 lightDirection = glm::normalize(lightPosition - position);
 		float lightDistance = glm::distance(lightPosition, position);
@@ -36,22 +36,18 @@ namespace {
 
 	bool intersectsBoundingBox(ModelTriangle& triangle, const glm::vec3 invertedDir, const glm::vec3 origin) {
 		// AABB bounding box intersection algorithm
-		float rayMin = 0.0f;
-		float rayMax = std::numeric_limits<float>::max();
+		glm::vec3 rayMin = (triangle.boundingMinMax.first - origin) * invertedDir;
+		glm::vec3 rayMax = (triangle.boundingMinMax.second - origin) * invertedDir;
 		for (int i = 0; i < 3; i++) {
-			float invertedAxis = invertedDir[i];
-			// get initial entry and exit points of the bounding box
-			float t0 = (triangle.boundingMinMax.first[i] - origin[i]) * invertedAxis;
-			float t1 = (triangle.boundingMinMax.second[i] - origin[i]) * invertedAxis;
-			if (invertedAxis < 0.0f) std::swap(t0, t1);
-			rayMin = t0 > rayMin ? t0 : rayMin;
-			rayMax = t1 < rayMax ? t1 : rayMax;
-			if (rayMax < rayMin) return false;
+			if (invertedDir[i] < 0.0f) std::swap(rayMin[i], rayMax[i]);
 		}
+		float finalEntry = glm::max(rayMin.x, rayMin.y, rayMin.z);
+		float finalExit = glm::min(rayMax.x, rayMax.y, rayMax.z);
+		if (finalExit < finalEntry || finalExit < 0) return false;
 		return true;
 	}
 
-	RayTriangleIntersection getClosestValidIntersection(glm::vec3 cameraPosition, glm::vec3 rayDirection, PolygonData& objects, int excludeID = -1, float lightDistance = std::numeric_limits<float>::max()) {
+	RayTriangleIntersection getClosestValidIntersection(glm::vec3& cameraPosition, glm::vec3& rayDirection, PolygonData& objects, int excludeID = -1, float lightDistance = std::numeric_limits<float>::max()) {
 		RayTriangleIntersection closest;
 		closest.distanceFromCamera = std::numeric_limits<float>::max();
 		closest.triangleIndex = -1;
@@ -87,7 +83,7 @@ namespace {
 	}
 
 	// inverse of getCanvasIntersection
-	glm::vec3 getCanvasPosition(Camera& camera, CanvasPoint position, glm::mat3 inverseViewMatrix) {
+	glm::vec3 getCanvasPosition(Camera& camera, CanvasPoint& position, glm::mat3& inverseViewMatrix) {
 	int scaleFactor = 90;
 	float focalLength = 2.0f;
 	position.x = WIDTH - position.x;
@@ -97,8 +93,8 @@ namespace {
 	return camera.cameraPosition + displacement;
 	}
 	
-	float getSoftShadow(PolygonData& objects, RayTriangleIntersection& initialIntersection, glm::vec3 lightPosition) {
-		int samples = 10;
+	float getSoftShadow(PolygonData& objects, RayTriangleIntersection& initialIntersection, glm::vec3& lightPosition) {
+		int samples = 5; // increase for better shadows, worse performance
 		float lightRadius = 0.1;
 		glm::vec3 offsetPoint = initialIntersection.intersectionPoint + 
 			0.01f * initialIntersection.intersectedTriangle.normal;
@@ -114,97 +110,112 @@ namespace {
 
 		return float(hits) / samples;
 	}
+
+	// precursor to multithreading
+	void useGouraudTask(glm::vec2 boundY, std::vector<std::vector<uint32_t>>& colorBuffer, Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition, glm::mat3& inverseView) {
+		for (int y = boundY[0]; y < boundY[1]; y++) {
+			for (int x = 0; x < WIDTH; x++) {
+				// normalise the canvas coordinates into real world coordinates
+				glm::vec3 canvasPosition = getCanvasPosition(camera, CanvasPoint(x, y), inverseView);
+
+				glm::vec3 direction = glm::normalize(camera.cameraPosition - canvasPosition);
+
+				// fire initial ray into scene
+				RayTriangleIntersection intersection = getClosestValidIntersection(camera.cameraPosition, direction, objects);
+				if (intersection.triangleIndex == -1) {
+					continue;
+				}
+
+				// fire shadow ray into light
+				if (lighting.useShadow) {
+					// do hard shadows
+					glm::vec3 offsetPoint = intersection.intersectionPoint + 0.01f * intersection.intersectedTriangle.normal;
+					glm::vec3 lightDirection = glm::normalize(lightPosition - offsetPoint);
+					float lightDistance = glm::length(lightPosition - offsetPoint);
+					RayTriangleIntersection shadowIntersection =
+						getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
+
+					if (shadowIntersection.triangleIndex != -1) {
+						colorBuffer[y][x] = lighting.useAmbience ? globalAmbientColor.asNumeric() : 0;
+						continue;
+					}
+				}
+
+				auto vertices = intersection.intersectedTriangle.vertices;
+				glm::vec3 barycentric = intersection.barycentric;
+				float cameraDistance = intersection.distanceFromCamera;
+				Colour baseColor = intersection.intersectedTriangle.colour;
+				Colour finalColor;
+
+				// apply texture map if necessary
+				if (intersection.intersectedTriangle.texturePoints[0] != -1) {
+					std::array<glm::vec2, 3> textureVertices = objects.getTextureVertices(intersection.triangleIndex);
+					GouraudVertex vertex1 = objects.loadedVertices[vertices[0]];
+					GouraudVertex vertex2 = objects.loadedVertices[vertices[1]];
+					GouraudVertex vertex3 = objects.loadedVertices[vertices[2]];
+					textureVertices[0] /= cameraDistance;
+					textureVertices[1] /= cameraDistance;
+					textureVertices[2] /= cameraDistance;
+					float interpolatedDepth = barycentric[0] / glm::abs(cameraDistance)
+						+ barycentric[1] / glm::abs(cameraDistance)
+						+ barycentric[2] / glm::abs(cameraDistance);
+					glm::vec2 coordinate = barycentric[0] * textureVertices[0]
+						+ barycentric[1] * textureVertices[1]
+						+ barycentric[2] * textureVertices[2];
+					coordinate *= (1 / interpolatedDepth);
+					baseColor = Colour(textures.pixels[glm::floor(glm::max(coordinate.x, 0.0f)) +
+						glm::floor(glm::max(coordinate.y, 0.0f)) * textures.width
+					]);
+
+					glm::vec2 weight1 = barycentric[2] * getLightAttributes(
+						vertex1.normal, lightPosition, camera.cameraPosition, vertex1.position);
+					glm::vec2 weight2 = barycentric[0] * getLightAttributes(
+						vertex2.normal, lightPosition, camera.cameraPosition, vertex2.position);
+					glm::vec2 weight3 = barycentric[1] * getLightAttributes(
+						vertex3.normal, lightPosition, camera.cameraPosition, vertex3.position);
+
+					glm::vec2 finalAttributes = (weight1 + weight2 + weight3);
+					finalColor = globalAmbientColor + baseColor * finalAttributes.x /*+ globalLightColor * finalAttributes.y*/;
+				}
+				else {
+					// apply interpolated lighting from each vertex
+					finalColor =
+						objects.loadedVertices[vertices[0]].renderedColor * barycentric[2] +
+						objects.loadedVertices[vertices[1]].renderedColor * barycentric[0] +
+						objects.loadedVertices[vertices[2]].renderedColor * barycentric[1];
+				}
+
+				float softShadow = 0;
+				if (lighting.useSoftShadow) {
+					softShadow = getSoftShadow(objects, intersection, lightPosition);
+				}
+
+				colorBuffer[y][x] = (finalColor * softShadow).asNumeric();
+			}
+		}
+	}
 }
 
 void Raytrace::useGouraud(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition) {
 	window.clearPixels();
 	//glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,1,0 }));
 	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
-	//for (int y = 0; y < HEIGHT; y++) {
-	for (int y = HEIGHT - 1; y > -1; y--) {
+	std::vector<std::thread> threads;
+	std::vector<std::vector<uint32_t>> colorBuffer(HEIGHT, std::vector<uint32_t>(WIDTH));
+	threads.emplace_back(useGouraudTask, glm::vec2{ 0, HEIGHT / 2 }, std::ref(colorBuffer), camera, objects, textures, lightPosition, inverseViewMatrix);
+	threads.emplace_back(useGouraudTask, glm::vec2{ HEIGHT/2, HEIGHT }, std::ref(colorBuffer), camera, objects, textures, lightPosition, inverseViewMatrix);
+	for (auto& thread : threads) {
+		thread.join();
+	}
+	for (int y = 0; y < HEIGHT; y++) {
 		for (int x = 0; x < WIDTH; x++) {
-			// normalise the canvas coordinates into real world coordinates
-			glm::vec3 canvasPosition = getCanvasPosition(camera, CanvasPoint(x, y), inverseViewMatrix);
-
-			glm::vec3 direction = glm::normalize(camera.cameraPosition - canvasPosition);
-
-			// fire initial ray into scene
-			RayTriangleIntersection intersection = getClosestValidIntersection(camera.cameraPosition, direction, objects);
-			if (intersection.triangleIndex == -1) {
-				continue;
-			}
-
-			// fire shadow ray into light
-			if (lighting.useShadow) {
-				// do hard shadows
-				glm::vec3 offsetPoint = intersection.intersectionPoint + 0.01f * intersection.intersectedTriangle.normal;
-				glm::vec3 lightDirection = glm::normalize(lightPosition - offsetPoint);
-				float lightDistance = glm::length(lightPosition - offsetPoint);
-				RayTriangleIntersection shadowIntersection =
-					getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
-
-				if (shadowIntersection.triangleIndex != -1) {
-					window.setPixelColour(x, y, lighting.useAmbience ? globalAmbientColor.asNumeric() : 0);
-					continue;
-				}
-			}
-
-			auto vertices = intersection.intersectedTriangle.vertices;
-			glm::vec3 barycentric = intersection.barycentric;
-			float cameraDistance = intersection.distanceFromCamera;
-			Colour baseColor = intersection.intersectedTriangle.colour;
-			Colour finalColor;
-
-			// apply texture map if necessary
-			if (intersection.intersectedTriangle.texturePoints[0] != -1) {
-				std::array<glm::vec2, 3> textureVertices = objects.getTextureVertices(intersection.triangleIndex);
-				GouraudVertex vertex1 = objects.loadedVertices[vertices[0]];
-				GouraudVertex vertex2 = objects.loadedVertices[vertices[1]];
-				GouraudVertex vertex3 = objects.loadedVertices[vertices[2]];
-				textureVertices[0] /= cameraDistance;
-				textureVertices[1] /= cameraDistance;
-				textureVertices[2] /= cameraDistance;
-				float interpolatedDepth = barycentric[0] / glm::abs(cameraDistance)
-					+ barycentric[1] / glm::abs(cameraDistance)
-					+ barycentric[2] / glm::abs(cameraDistance);
-				glm::vec2 coordinate = barycentric[0] * textureVertices[0]
-					+ barycentric[1] * textureVertices[1]
-					+ barycentric[2] * textureVertices[2];
-				coordinate *= (1 / interpolatedDepth);
-				baseColor = Colour(textures.pixels[glm::floor(glm::max(coordinate.x, 0.0f)) +
-					glm::floor(glm::max(coordinate.y, 0.0f)) * textures.width
-				]);
-
-				glm::vec2 weight1 = barycentric[2] * getLightAttributes(
-					vertex1.normal, lightPosition, camera.cameraPosition, vertex1.position);
-				glm::vec2 weight2 = barycentric[0] * getLightAttributes(
-					vertex2.normal, lightPosition, camera.cameraPosition, vertex2.position);
-				glm::vec2 weight3 = barycentric[1] * getLightAttributes(
-					vertex3.normal, lightPosition, camera.cameraPosition, vertex3.position);
-
-				glm::vec2 finalAttributes = (weight1 + weight2 + weight3);
-				finalColor = globalAmbientColor + baseColor * finalAttributes.x /*+ globalLightColor * finalAttributes.y*/;
-			}
-			else {
-				// apply interpolated lighting from each vertex
-				finalColor =
-					objects.loadedVertices[vertices[0]].renderedColor * barycentric[2] +
-					objects.loadedVertices[vertices[1]].renderedColor * barycentric[0] +
-					objects.loadedVertices[vertices[2]].renderedColor * barycentric[1];
-			}
-			
-			float softShadow = 0;
-			if (lighting.useSoftShadow) {
-				softShadow = getSoftShadow(objects, intersection, lightPosition);
-			}
-
-			window.setPixelColour(x, y, (finalColor * softShadow).asNumeric());
-			window.renderFrame();
+			window.setPixelColour(x, y, colorBuffer[y][x]);
 		}
 	}
+	window.renderFrame();
 }
 
-void Raytrace::preprocessGouraud(PolygonData& objects, glm::vec3 lightPosition, glm::vec3 cameraPosition, bool& hasParametersChanged) {
+void Raytrace::preprocessGouraud(PolygonData& objects, glm::vec3& lightPosition, glm::vec3& cameraPosition, bool& hasParametersChanged) {
 	hasParametersChanged = false;
 	for (auto& vertex : objects.loadedVertices) {
 		glm::vec3 lightDirection = glm::normalize(lightPosition - glm::vec3(vertex));
