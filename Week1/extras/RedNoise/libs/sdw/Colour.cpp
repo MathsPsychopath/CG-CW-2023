@@ -46,3 +46,11 @@ Colour Colour::operator+(Colour other) {
 	result.blue = glm::clamp(this->blue + other.blue, 0, 255);
 	return result;
 }
+
+Colour Colour::operator-(Colour other) {
+	Colour result;
+	result.red = glm::clamp(this->red - other.red, 0, 255);
+	result.green = glm::clamp(this->green - other.green, 0, 255);
+	result.blue = glm::clamp(this->blue - other.blue, 0, 255);
+	return result;
+}
