@@ -35,6 +35,16 @@ void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData
 	}
 }
 
+//std::vector<std::vector<uint32_t>> getRaytrace(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMap& textures) {
+//	// create results canvas
+//	//glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,1,0 }));
+//	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
+//	std::vector<std::thread> threads;
+//	std::vector<std::vector<uint32_t>> colorBuffer(HEIGHT, std::vector<uint32_t>(WIDTH));
+//	// parallelise workload
+//		// in task, separate
+//}
+
 void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderType& renderer, glm::vec3& lightPosition, bool& hasParametersChanged) {
 	if (event.type == SDL_KEYDOWN) {
 		hasParametersChanged = true;
@@ -92,14 +102,11 @@ int main(int argc, char *argv[]) {
 	TextureMap textures = TextureMap("texture.ppm");
 
 	Camera camera(0.0, 0.0, 4.0);
-	//Camera camera(0.0, 4.5, 6);
 
 	FileReader fr;
 	fr.readMTLFile("textured-cornell-box.mtl");
-	//fr.readMTLFile("cornell-box.mtl");
 	PolygonData objects = fr.readOBJFile("textured-cornell-box.obj", 0.35, { textures.width, textures.height });
-	//PolygonData objects = fr.readOBJFile("cornell-box.obj", 0.35, {textures.width, textures.height});
-	//PolygonData objects = fr.readOBJFile("sphere.obj", 1);
+	fr.appendPolygonData(objects, "sphere.obj");
 	if (objects.loadedTriangles.empty()) return -1;
 	
 	glm::vec3 sceneMin(std::numeric_limits<float>::min());
@@ -111,7 +118,7 @@ int main(int argc, char *argv[]) {
 		// calculate normals
 		glm::vec3 e0 = v1 - v0;
 		glm::vec3 e1 = v2 - v0;
-		objects.loadedTriangles[triangleIndex].normal = glm::normalize(glm::cross(e0, e1)); // winding order for cornell box
+		objects.loadedTriangles[triangleIndex].normal = glm::normalize(glm::cross(e0, e1));
 
 		// calculate the bounding box for raytrace optimisation
 		glm::vec3 minBound = glm::min(v0, v1, v2);
@@ -135,8 +142,6 @@ int main(int argc, char *argv[]) {
 
 	RenderType renderer = RAYTRACE;
 	glm::vec3 lightPosition = { 0, 0.5, 0.25 };
-	//glm::vec3 lightPosition = { 0.5, 2.5, 2 };
-	//glm::vec3 lightPosition = { 0.5, 2.5, 2 };
 	bool hasParametersChanged = true;
 	if (!lighting.usePhong) Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 

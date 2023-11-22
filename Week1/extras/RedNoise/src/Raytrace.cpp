@@ -94,7 +94,7 @@ namespace {
 	}
 	
 	float getSoftShadow(PolygonData& objects, RayTriangleIntersection& initialIntersection, glm::vec3& lightPosition) {
-		int samples = 5; // increase for better shadows, worse performance
+		int samples = 10; // increase for better shadows, worse performance
 		float lightRadius = 0.1;
 		glm::vec3 offsetPoint = initialIntersection.intersectionPoint + 
 			0.01f * initialIntersection.intersectedTriangle.normal;
@@ -198,7 +198,6 @@ namespace {
 
 void Raytrace::useGouraud(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition) {
 	window.clearPixels();
-	//glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,1,0 }));
 	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
 	std::vector<std::thread> threads;
 	std::vector<std::vector<uint32_t>> colorBuffer(HEIGHT, std::vector<uint32_t>(WIDTH));
@@ -237,8 +236,7 @@ void Raytrace::preprocessGouraud(PolygonData& objects, glm::vec3& lightPosition,
 
 void Raytrace::usePhong(DrawingWindow& window, Camera& camera, PolygonData& objects, glm::vec3 lightPosition) {
 	window.clearPixels();
-	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,1,0 }));
-	//glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
+	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
 	for (int y = 0; y < HEIGHT; y++) {
 		for (int x = 0; x < WIDTH; x++) {
 
