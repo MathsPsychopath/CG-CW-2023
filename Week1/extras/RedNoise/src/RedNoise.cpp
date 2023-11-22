@@ -102,14 +102,25 @@ int main(int argc, char *argv[]) {
 	//PolygonData objects = fr.readOBJFile("sphere.obj", 1);
 	if (objects.loadedTriangles.empty()) return -1;
 	
-	// calculate normals
+	glm::vec3 sceneMin(std::numeric_limits<float>::min());
+	glm::vec3 sceneMax(std::numeric_limits<float>::max());
 	for (int triangleIndex = 0; triangleIndex < objects.loadedTriangles.size(); triangleIndex++) {
-		glm::vec3 e0 = objects.getTriangleVertexPosition(triangleIndex, 1)
-			- objects.getTriangleVertexPosition(triangleIndex, 0);
-		glm::vec3 e1 = objects.getTriangleVertexPosition(triangleIndex, 2) -
-			objects.getTriangleVertexPosition(triangleIndex, 0);
+		glm::vec3 v0 = objects.getTriangleVertexPosition(triangleIndex, 0);
+		glm::vec3 v1 = objects.getTriangleVertexPosition(triangleIndex, 1);
+		glm::vec3 v2 = objects.getTriangleVertexPosition(triangleIndex, 2);
+		// calculate normals
+		glm::vec3 e0 = v1 - v0;
+		glm::vec3 e1 = v2 - v0;
 		objects.loadedTriangles[triangleIndex].normal = glm::normalize(glm::cross(e0, e1)); // winding order for cornell box
+
+		// calculate the bounding box for raytrace optimisation
+		glm::vec3 minBound = glm::min(v0, v1, v2);
+		glm::vec3 maxBound = glm::max(v0, v1, v2);
+		objects.loadedTriangles[triangleIndex].boundingMinMax = {minBound, maxBound};
+		sceneMax = glm::max(sceneMax, maxBound);
+		sceneMin = glm::min(sceneMin, minBound);
 	}
+	objects.sceneBoundingMinMax = { sceneMin, sceneMax };
 	
 	// normalise all vertex normal sums.
 	for (auto& entry : objects.vertexToTriangles) {

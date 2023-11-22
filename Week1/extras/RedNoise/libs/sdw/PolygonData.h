@@ -9,6 +9,7 @@ struct PolygonData {
 	std::vector<ModelTriangle> loadedTriangles;
 	std::vector<GouraudVertex> loadedVertices;
 	std::vector<TexturePoint> loadedTextures;
+	std::pair<glm::vec3, glm::vec3> sceneBoundingMinMax;
 
 	PolygonData();
 	PolygonData(std::unordered_map<int, std::set<int>> vertexToTriangles,

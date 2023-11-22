@@ -33,40 +33,61 @@ namespace {
 		}
 		return { diffuseComponent, specularComponent };
 	}
-}
 
-RayTriangleIntersection Raytrace::getClosestValidIntersection(glm::vec3 cameraPosition, glm::vec3 rayDirection, PolygonData& objects, int excludeID, float lightDistance) {
-	RayTriangleIntersection closest;
-	closest.distanceFromCamera = std::numeric_limits<float>::max();
-	closest.triangleIndex = -1;
-	for (int triangleIndex = 0; triangleIndex < objects.loadedTriangles.size(); triangleIndex++) {
-		if (triangleIndex == excludeID) continue;
-		glm::vec3 e0 = objects.getTriangleVertexPosition(triangleIndex, 1) - objects.getTriangleVertexPosition(triangleIndex, 0);
-		glm::vec3 e1 = objects.getTriangleVertexPosition(triangleIndex, 2) - objects.getTriangleVertexPosition(triangleIndex, 0);
-		glm::vec3 SPVector = cameraPosition - objects.getTriangleVertexPosition(triangleIndex, 0);
-		glm::mat3 DEMatrix(-rayDirection, e0, e1);
-		glm::vec3 possibleSolution = glm::inverse(DEMatrix) * SPVector;
-		float t = possibleSolution.x; // distance from camera
-		float u = possibleSolution.y; // distance along v1-v0 edge
-		float v = possibleSolution.z; // distance along v2-v0 edge
-		
-		// assert validity check
-		if (u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0 && u + v <= 1.0) {
-			// get the closest triangle to camera
-			if (t > lightDistance || t > closest.distanceFromCamera || t < 0) {
+	bool intersectsBoundingBox(ModelTriangle& triangle, const glm::vec3 invertedDir, const glm::vec3 origin) {
+		// AABB bounding box intersection algorithm
+		float rayMin = 0.0f;
+		float rayMax = std::numeric_limits<float>::max();
+		for (int i = 0; i < 3; i++) {
+			float invertedAxis = invertedDir[i];
+			// get initial entry and exit points of the bounding box
+			float t0 = (triangle.boundingMinMax.first[i] - origin[i]) * invertedAxis;
+			float t1 = (triangle.boundingMinMax.second[i] - origin[i]) * invertedAxis;
+			if (invertedAxis < 0.0f) std::swap(t0, t1);
+			rayMin = t0 > rayMin ? t0 : rayMin;
+			rayMax = t1 < rayMax ? t1 : rayMax;
+			if (rayMax < rayMin) return false;
+		}
+		return true;
+	}
+
+	RayTriangleIntersection getClosestValidIntersection(glm::vec3 cameraPosition, glm::vec3 rayDirection, PolygonData& objects, int excludeID = -1, float lightDistance = std::numeric_limits<float>::max()) {
+		RayTriangleIntersection closest;
+		closest.distanceFromCamera = std::numeric_limits<float>::max();
+		closest.triangleIndex = -1;
+		glm::vec3 invertedDirection = 1.0f / rayDirection;
+		for (int triangleIndex = 0; triangleIndex < objects.loadedTriangles.size(); triangleIndex++) {
+			if (!intersectsBoundingBox(objects.loadedTriangles[triangleIndex], invertedDirection, cameraPosition)) {
 				continue;
 			}
-			closest.distanceFromCamera = t;
-			closest.triangleIndex = triangleIndex;
-			closest.intersectedTriangle = objects.loadedTriangles[triangleIndex];
-			closest.intersectionPoint = cameraPosition + t * rayDirection;
-			closest.barycentric = glm::vec3{ u, v, 1 - (u + v) };
+			if (triangleIndex == excludeID) continue;
+			glm::vec3 e0 = objects.getTriangleVertexPosition(triangleIndex, 1) - objects.getTriangleVertexPosition(triangleIndex, 0);
+			glm::vec3 e1 = objects.getTriangleVertexPosition(triangleIndex, 2) - objects.getTriangleVertexPosition(triangleIndex, 0);
+			glm::vec3 SPVector = cameraPosition - objects.getTriangleVertexPosition(triangleIndex, 0);
+			glm::mat3 DEMatrix(-rayDirection, e0, e1);
+			glm::vec3 possibleSolution = glm::inverse(DEMatrix) * SPVector;
+			float t = possibleSolution.x; // distance from camera
+			float u = possibleSolution.y; // distance along v1-v0 edge
+			float v = possibleSolution.z; // distance along v2-v0 edge
+			
+			// assert validity check
+			if (u >= 0.0 && u <= 1.0 && v >= 0.0 && v <= 1.0 && u + v <= 1.0) {
+				// get the closest triangle to camera
+				if (t > lightDistance || t > closest.distanceFromCamera || t < 0) {
+					continue;
+				}
+				closest.distanceFromCamera = t;
+				closest.triangleIndex = triangleIndex;
+				closest.intersectedTriangle = objects.loadedTriangles[triangleIndex];
+				closest.intersectionPoint = cameraPosition + t * rayDirection;
+				closest.barycentric = glm::vec3{ u, v, 1 - (u + v) };
+			}
 		}
+		return closest;
 	}
-	return closest;
-}
 
-glm::vec3 Raytrace::getCanvasPosition(Camera& camera, CanvasPoint position, glm::mat3 inverseViewMatrix) {
+	// inverse of getCanvasIntersection
+	glm::vec3 getCanvasPosition(Camera& camera, CanvasPoint position, glm::mat3 inverseViewMatrix) {
 	int scaleFactor = 90;
 	float focalLength = 2.0f;
 	position.x = WIDTH - position.x;
@@ -74,6 +95,25 @@ glm::vec3 Raytrace::getCanvasPosition(Camera& camera, CanvasPoint position, glm:
 	float realY = ((position.y - HEIGHT / 2) / (scaleFactor * focalLength));
 	glm::vec3 displacement = glm::vec3(realX, realY, focalLength) * inverseViewMatrix;
 	return camera.cameraPosition + displacement;
+	}
+	
+	float getSoftShadow(PolygonData& objects, RayTriangleIntersection& initialIntersection, glm::vec3 lightPosition) {
+		int samples = 10;
+		float lightRadius = 0.1;
+		glm::vec3 offsetPoint = initialIntersection.intersectionPoint + 
+			0.01f * initialIntersection.intersectedTriangle.normal;
+		int hits = 0;
+		for (int i = 0; i < samples; i++) {
+			glm::vec3 sampledLight = Lighting::sampleLightPosition(lightPosition, lightRadius);
+			glm::vec3 direction = glm::normalize(sampledLight - offsetPoint);
+			float lightDistance = glm::length(sampledLight - offsetPoint);
+			RayTriangleIntersection shadowIntersection = 
+				getClosestValidIntersection(offsetPoint, direction, objects, initialIntersection.triangleIndex, lightDistance);
+			if (shadowIntersection.triangleIndex == -1) hits += 1;
+		}
+
+		return float(hits) / samples;
+	}
 }
 
 void Raytrace::useGouraud(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition) {
@@ -84,24 +124,29 @@ void Raytrace::useGouraud(DrawingWindow& window, Camera& camera, PolygonData& ob
 	for (int y = HEIGHT - 1; y > -1; y--) {
 		for (int x = 0; x < WIDTH; x++) {
 			// normalise the canvas coordinates into real world coordinates
-			glm::vec3 canvasPosition = Raytrace::getCanvasPosition(camera, CanvasPoint(x, y), inverseViewMatrix);
+			glm::vec3 canvasPosition = getCanvasPosition(camera, CanvasPoint(x, y), inverseViewMatrix);
 
 			glm::vec3 direction = glm::normalize(camera.cameraPosition - canvasPosition);
 
 			// fire initial ray into scene
-			RayTriangleIntersection intersection = Raytrace::getClosestValidIntersection(camera.cameraPosition, direction, objects);
+			RayTriangleIntersection intersection = getClosestValidIntersection(camera.cameraPosition, direction, objects);
 			if (intersection.triangleIndex == -1) {
 				continue;
 			}
 
 			// fire shadow ray into light
-			glm::vec3 offsetPoint = intersection.intersectionPoint + 0.01f * intersection.intersectedTriangle.normal;
-			glm::vec3 lightDirection = glm::normalize(lightPosition - offsetPoint);
-			float lightDistance = glm::length(lightPosition - offsetPoint);
-			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
-			if (lighting.useShadow && shadowIntersection.triangleIndex != -1) {
-				window.setPixelColour(x, y, lighting.useAmbience ? globalAmbientColor.asNumeric() : 0);
-				continue;
+			if (lighting.useShadow) {
+				// do hard shadows
+				glm::vec3 offsetPoint = intersection.intersectionPoint + 0.01f * intersection.intersectedTriangle.normal;
+				glm::vec3 lightDirection = glm::normalize(lightPosition - offsetPoint);
+				float lightDistance = glm::length(lightPosition - offsetPoint);
+				RayTriangleIntersection shadowIntersection =
+					getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
+
+				if (shadowIntersection.triangleIndex != -1) {
+					window.setPixelColour(x, y, lighting.useAmbience ? globalAmbientColor.asNumeric() : 0);
+					continue;
+				}
 			}
 
 			auto vertices = intersection.intersectedTriangle.vertices;
@@ -147,8 +192,13 @@ void Raytrace::useGouraud(DrawingWindow& window, Camera& camera, PolygonData& ob
 					objects.loadedVertices[vertices[1]].renderedColor * barycentric[0] +
 					objects.loadedVertices[vertices[2]].renderedColor * barycentric[1];
 			}
+			
+			float softShadow = 0;
+			if (lighting.useSoftShadow) {
+				softShadow = getSoftShadow(objects, intersection, lightPosition);
+			}
 
-			window.setPixelColour(x, y, finalColor.asNumeric());
+			window.setPixelColour(x, y, (finalColor * softShadow).asNumeric());
 			window.renderFrame();
 		}
 	}
@@ -182,12 +232,12 @@ void Raytrace::usePhong(DrawingWindow& window, Camera& camera, PolygonData& obje
 		for (int x = 0; x < WIDTH; x++) {
 
 			// normalise the canvas coordinates into real world coordinates
-			glm::vec3 canvasPosition = Raytrace::getCanvasPosition(camera, CanvasPoint(x, y), inverseViewMatrix);
+			glm::vec3 canvasPosition = getCanvasPosition(camera, CanvasPoint(x, y), inverseViewMatrix);
 
 			glm::vec3 direction = glm::normalize(camera.cameraPosition - canvasPosition);
 
 			// fire initial ray into scene
-			RayTriangleIntersection intersection = Raytrace::getClosestValidIntersection(camera.cameraPosition, direction, objects);
+			RayTriangleIntersection intersection = getClosestValidIntersection(camera.cameraPosition, direction, objects);
 			if (intersection.triangleIndex == -1) {
 				continue;
 			}
@@ -197,7 +247,7 @@ void Raytrace::usePhong(DrawingWindow& window, Camera& camera, PolygonData& obje
 			glm::vec3 lightDirection = glm::normalize(lightPosition - offsetPoint);
 			float lightDistance = glm::length(lightPosition - offsetPoint);
 			glm::vec3 barycentric = intersection.barycentric;
-			RayTriangleIntersection shadowIntersection = Raytrace::getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
+			RayTriangleIntersection shadowIntersection = getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
 			if (lighting.useShadow && shadowIntersection.triangleIndex != -1) {
 				window.setPixelColour(x, y, lighting.useAmbience ? globalAmbientColor.asNumeric() : 0);
 				continue;

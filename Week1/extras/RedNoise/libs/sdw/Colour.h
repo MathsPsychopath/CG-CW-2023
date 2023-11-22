@@ -18,6 +18,7 @@ struct Colour {
 	Colour operator*(float colorScale);
 	void operator+=(float highlight);
 	Colour operator+(Colour other);
+	Colour operator-(Colour other);
 
 	uint32_t asNumeric();
 };

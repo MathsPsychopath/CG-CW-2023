@@ -12,6 +12,7 @@ struct ModelTriangle {
 	std::array<int, 3> texturePoints{};
 	Colour colour{};
 	glm::vec3 normal{};
+	std::pair<glm::vec3, glm::vec3> boundingMinMax;
 
 	ModelTriangle();
 	ModelTriangle(int v1Index, int v2Index, int v3Index, Colour trigColour);
