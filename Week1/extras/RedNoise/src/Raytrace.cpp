@@ -6,7 +6,7 @@ Colour globalLightColor(255, 255, 255);
 
 namespace {
 
-	glm::vec2 getLightAttributes(glm::vec3& normal, glm::vec3& lightPosition, glm::vec3& cameraPosition, glm::vec3& position) {
+	glm::vec2 getLightAttributes(glm::vec3& normal, glm::vec3& lightPosition, glm::vec3& start, glm::vec3& position) {
 		glm::vec2 output;
 		glm::vec3 lightDirection = glm::normalize(lightPosition - position);
 		float lightDistance = glm::distance(lightPosition, position);
@@ -27,7 +27,7 @@ namespace {
 		float specularComponent = 0;
 		if (lighting.useSpecular) {
 			glm::vec3 reflection = glm::reflect(-lightDirection, normal);
-			float specularity = glm::max(glm::dot(reflection, glm::normalize(cameraPosition - position)), 0.0f);
+			float specularity = glm::max(glm::dot(reflection, glm::normalize(start - position)), 0.0f);
 			float shininess = 128;
 			specularComponent = glm::pow(specularity, shininess);
 		}
@@ -111,7 +111,7 @@ namespace {
 		return float(hits) / samples;
 	}
 
-	glm::vec2 calculatePhongComponents(PolygonData& objects, RayTriangleIntersection& intersection, glm::vec3 lightPosition, glm::vec3 cameraPosition) {
+	glm::vec2 calculatePhongComponents(PolygonData& objects, RayTriangleIntersection& intersection, glm::vec3 lightPosition, glm::vec3 start) {
 		// interpolate the normal by the pixel
 		std::array<int, 3> vertices = intersection.intersectedTriangle.vertices;
 		glm::vec3 barycentric = intersection.barycentric;
@@ -119,7 +119,7 @@ namespace {
 			objects.loadedVertices[vertices[1]].normal * barycentric[0] +
 			objects.loadedVertices[vertices[2]].normal * barycentric[1]);
 		glm::vec3 pixelCoordinates = intersection.intersectionPoint;
-		return getLightAttributes(interpolatedNormal, lightPosition, cameraPosition, pixelCoordinates);
+		return getLightAttributes(interpolatedNormal, lightPosition, start, pixelCoordinates);
 	}
 
 	std::vector<glm::vec2> calculateGouraudComponents(PolygonData& objects, RayTriangleIntersection& intersection) {
@@ -157,70 +157,87 @@ namespace {
 			glm::floor(glm::max(coordinate.y, 0.0f)) * textures.width
 		]);
 	}
+
+	std::pair<Colour, RayTriangleIntersection> raytrace(PolygonData& objects, TextureMap& textures, glm::vec3 start, glm::vec3 direction, glm::vec3 lightOrigin) {
+		// get initial ray trace
+		RayTriangleIntersection intersection = getClosestValidIntersection(start, direction, objects);
+		if (intersection.triangleIndex == -1) {
+			return { Colour(), intersection };
+		}
+
+		// conditionally apply hard shadows
+		if (lighting.useShadow) {
+			glm::vec3 offsetPoint = intersection.intersectionPoint + 0.01f * intersection.intersectedTriangle.normal;
+			glm::vec3 lightDirection = glm::normalize(lightOrigin - offsetPoint);
+			float lightDistance = glm::length(lightOrigin - offsetPoint);
+			RayTriangleIntersection shadowIntersection =
+				getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
+
+			if (shadowIntersection.triangleIndex != -1) {
+				RayTriangleIntersection hardShadow(glm::vec3{ 0,0,0 }, 0, ModelTriangle(), -1);
+				return { lighting.useAmbience ? globalAmbientColor : Colour(), hardShadow };
+			}
+		}
+		// conditionally get texture map as pixel color, which needs on-the-fly getLightAttribute.
+		Colour baseColor = intersection.intersectedTriangle.colour;
+		if (intersection.intersectedTriangle.texturePoints[0] != -1) {
+			baseColor = getRaytracedTexture(objects, intersection, textures);
+		}
+		// diverge between phong and gouraud shading and calculate diffuse & specular components
+		Colour diffuse = baseColor;
+		Colour specular = globalLightColor;
+		if (lighting.usePhong) {
+			glm::vec2 lightingComponents = calculatePhongComponents(objects, intersection, lightOrigin, start);
+			diffuse *= lightingComponents.x;
+			specular *= lightingComponents.y;
+		}
+		else {
+			std::vector<glm::vec2> lightingComponents = calculateGouraudComponents(objects, intersection);
+			diffuse =
+				baseColor * lightingComponents[0].x +
+				baseColor * lightingComponents[1].x +
+				baseColor * lightingComponents[2].x;
+			specular = globalLightColor * lightingComponents[0].y +
+				globalLightColor * lightingComponents[1].y +
+				globalLightColor * lightingComponents[2].y;
+		}
+
+		float brightness = 1;
+		if (lighting.useSoftShadow) {
+			brightness = getSoftShadow(objects, intersection, lightOrigin);
+		}
+
+		Colour ambience = lighting.useAmbience ? globalAmbientColor : Colour();
+		// apply shading to color
+		Colour finalColor = (ambience + diffuse + specular) * brightness;
+		return { finalColor, intersection };
+	}
 }
 
 void Raytrace::renderSegment(glm::vec2 boundY, std::vector<std::vector<uint32_t>>& colorBuffer, PolygonData& objects, Camera& camera, TextureMap& textures, glm::vec3 lightOrigin) {
 	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
 	for (int y = boundY[0]; y < boundY[1]; y++) {
 		for (int x = 0; x < WIDTH; x++) {
-			if (y == HEIGHT / 4 && x == WIDTH / 2) {
-				std::cout << "here" << std::endl;
-			}
-			// get initial ray trace
+			// get point on the ray trace
 			glm::vec3 canvasPosition = getCanvasPosition(camera, x, y, inverseViewMatrix);
 			glm::vec3 direction = glm::normalize(camera.cameraPosition - canvasPosition);
 
-			RayTriangleIntersection intersection = getClosestValidIntersection(camera.cameraPosition, direction, objects);
+
+			auto colorTrianglePair = raytrace(objects, textures, camera.cameraPosition, direction, lightOrigin);
+
+			Colour color = colorTrianglePair.first;
+			RayTriangleIntersection intersection = colorTrianglePair.second;
+
 			if (intersection.triangleIndex == -1) {
+				colorBuffer[y][x] = color.asNumeric();
 				continue;
 			}
 
-			// conditionally apply hard shadows
-			if (lighting.useShadow) {
-				glm::vec3 offsetPoint = intersection.intersectionPoint + 0.01f * intersection.intersectedTriangle.normal;
-				glm::vec3 lightDirection = glm::normalize(lightOrigin - offsetPoint);
-				float lightDistance = glm::length(lightOrigin - offsetPoint);
-				RayTriangleIntersection shadowIntersection =
-					getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
-
-				if (shadowIntersection.triangleIndex != -1) {
-					colorBuffer[y][x] = lighting.useAmbience ? globalAmbientColor.asNumeric() : 0;
-					continue;
-				}
-			}
-			// conditionally get texture map as pixel color, which needs on-the-fly getLightAttribute.
-			Colour baseColor = intersection.intersectedTriangle.colour;
-			if (intersection.intersectedTriangle.texturePoints[0] != -1) {
-				baseColor = getRaytracedTexture(objects, intersection, textures);
-			}
-			// diverge between phong and gouraud shading and calculate diffuse & specular components
-			Colour diffuse = baseColor;
-			Colour specular = globalLightColor;
-			if (lighting.usePhong) {
-				glm::vec2 lightingComponents = calculatePhongComponents(objects, intersection, lightOrigin, camera.cameraPosition);
-				diffuse *= lightingComponents.x;
-				specular *= lightingComponents.y;
-			}
-			else {
-				std::vector<glm::vec2> lightingComponents = calculateGouraudComponents(objects, intersection);
-				diffuse =
-					baseColor * lightingComponents[0].x +
-					baseColor * lightingComponents[1].x +
-					baseColor * lightingComponents[2].x;
-				specular = globalLightColor * lightingComponents[0].y +
-					globalLightColor * lightingComponents[1].y +
-					globalLightColor * lightingComponents[2].y;
-			}
-
-			float brightness = 1;
-			if (lighting.useSoftShadow) {
-				brightness = getSoftShadow(objects, intersection, lightOrigin);
-			}
-
-			Colour ambience = lighting.useAmbience ? globalAmbientColor : Colour{};
-			// apply shading to color
-			Colour finalColor = (ambience + diffuse + specular) * brightness;
-			colorBuffer[y][x] = finalColor.asNumeric();
+			// conditionally apply reflectiveness 
+			/*if (std::isgreater(intersection.intersectedTriangle.reflectivity, 0)) {
+				glm::vec3 reflectionRay = glm::reflect(-direction)
+			}*/
+			colorBuffer[y][x] = color.asNumeric();
 		}
 	}
 }
