@@ -9,6 +9,7 @@ void FileReader::addFileData(PolygonData& objects, std::ifstream& valid_filestre
 	Colour currentColor;
 	int currentVertex = 0;
 	glm::vec3 translation = { 0,0,0 };
+	float reflectivity = 0;
 	while (std::getline(valid_filestream, line)) {
 		std::vector<std::string> tokens = split(line, ' ');
 		// process each line
@@ -47,6 +48,7 @@ void FileReader::addFileData(PolygonData& objects, std::ifstream& valid_filestre
 				parsed = ModelTriangle(vIndex1, vIndex2, vIndex3, tIndex1, tIndex2, tIndex3);
 				parsed.colour = Colour();
 			}
+			parsed.reflectivity = reflectivity;
 			objects.loadedTriangles.push_back(parsed);
 			objects.vertexToTriangles[vIndex1].insert(objects.loadedTriangles.size() - 1);
 			objects.vertexToTriangles[vIndex2].insert(objects.loadedTriangles.size() - 1);
@@ -57,6 +59,13 @@ void FileReader::addFileData(PolygonData& objects, std::ifstream& valid_filestre
 		}
 		else if (identifier == "o" && tokens[1] == "red_sphere") {
 			translation = { -0.5, -1.2, 0.3 };
+		}
+		else if (identifier == "o" && tokens[1] == "tall_box") {
+			reflectivity = 0.8;
+		}
+		else {
+			translation = { 0,0,0 };
+			reflectivity = 0;
 		}
 	}
 }
