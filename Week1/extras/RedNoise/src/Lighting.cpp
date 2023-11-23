@@ -1,6 +1,6 @@
 #include "Lighting.h"
 
-Lighting lighting(true, false, false, true, false, true);
+Lighting lighting(true, false, true, true, false, true);
 
 Lighting::Lighting(bool initAmb, bool initShadow, bool initDiffuse, bool initSpec, bool initPhong, bool initSoft) :
 	useShadow(initShadow), useProximity(initDiffuse), useIncidence(initDiffuse), useSpecular(initSpec),

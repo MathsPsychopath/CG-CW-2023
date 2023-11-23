@@ -8,8 +8,8 @@ struct GouraudVertex {
 	Colour ambient;
 	float proximity;
 	float incidental;
-	Colour specular;
-	Colour diffuse;
+	float specular;
+	float diffuse;
 
 	Colour originalColor;
 	Colour renderedColor;

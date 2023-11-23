@@ -12,10 +12,7 @@
 
 namespace Raytrace {
 
-	void useGouraud(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition);
-
-	void usePhong(DrawingWindow& window, Camera& camera, PolygonData& objects, glm::vec3 lightPosition);
-
 	void preprocessGouraud(PolygonData& objects, glm::vec3& lightPosition, glm::vec3& cameraPosition, bool& hasParametersChanged);
 
+	void renderSegment(glm::vec2 boundY, std::vector<std::vector<uint32_t>>& colorBuffer, PolygonData& objects, Camera& camera, TextureMap& textures, glm::vec3 lightOrigin);
 }

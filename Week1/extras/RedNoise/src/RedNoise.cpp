@@ -35,15 +35,105 @@ void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData
 	}
 }
 
-//std::vector<std::vector<uint32_t>> getRaytrace(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMap& textures) {
-//	// create results canvas
-//	//glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,1,0 }));
-//	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
-//	std::vector<std::thread> threads;
-//	std::vector<std::vector<uint32_t>> colorBuffer(HEIGHT, std::vector<uint32_t>(WIDTH));
-//	// parallelise workload
-//		// in task, separate
-//}
+std::vector<std::vector<uint32_t>> getRaytrace(Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition) {
+	// create results canvas
+	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
+	std::vector<std::vector<uint32_t>> colorBuffer(HEIGHT, std::vector<uint32_t>(WIDTH));
+	std::vector<std::thread> threads;
+	// parallelise workload
+	
+	for (int i = 0; i < 4; i++) {
+		int startY = (HEIGHT >> 2) * i;
+		int endY = (HEIGHT >> 2) * (i + 1);
+		threads.emplace_back(Raytrace::renderSegment, glm::vec2{startY, endY}, std::ref(colorBuffer), std::ref(objects), std::ref(camera), std::ref(textures), lightPosition);
+	}
+	for (auto& thread : threads) thread.join();
+	return colorBuffer;
+}
+
+float useGaussian(float value, float stddev) {
+	return std::expf(-(glm::pow(value, 2) / (2.0f * glm::pow(stddev, 2))));
+}
+
+void splitChannels(uint32_t packed, int& red, int& green, int& blue) {
+	red = (packed >> 16) & 0xff;
+	green = (packed >> 8) & 0xff;
+	blue = (packed) & 0xff;
+}
+
+uint32_t packChannels(int red, int green, int blue) {
+	return (255 << 24) + (red << 16) + (green << 8) + blue;
+}
+
+void useBilteralFilter(glm::vec2 boundY, std::vector<std::vector<uint32_t>>& colorBuffer, std::vector<std::vector<uint32_t>>& output) {
+	// apply bilateral filter algorithm
+	float sigmaSpace = 2;
+	float sigmaRange = 17;
+	int radius = int(2 * sigmaSpace);
+	
+	for (int y = boundY[0]; y < boundY[1]; y++) {
+		for (int x = 0; x < WIDTH; x++) {
+			float sumOfWeights = 0;
+			float responseR = 0;
+			float responseG = 0;
+			float responseB = 0;
+
+			int currentR, currentG, currentB;
+			splitChannels(colorBuffer[y][x], currentR, currentG, currentB);
+			for (int dx = -radius; dx < radius; dx++) {
+				for (int dy = -radius; dy < radius; dy++) {
+					int nx = x + dx;
+					int ny = y + dy;
+
+					if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+						int kernelR, kernelG, kernelB;
+						splitChannels(colorBuffer[ny][nx], kernelR, kernelG, kernelB);
+						float colorDist = glm::sqrt(
+							glm::pow(kernelR - currentR, 2) +
+							glm::pow(kernelG - currentG, 2) +
+							glm::pow(kernelB - currentB, 2)
+						);
+
+						float spaceWeight = useGaussian(glm::sqrt(glm::pow(dx, 2) + glm::pow(dy, 2)), sigmaSpace);
+						float rangeWeight = useGaussian(colorDist, sigmaRange);
+						float weight = spaceWeight * rangeWeight;
+
+						responseR += weight * kernelR;
+						responseG += weight * kernelG;
+						responseB += weight * kernelB;
+						sumOfWeights += weight;
+					}
+				}
+			}
+			int finalR = responseR / sumOfWeights;
+			int finalG = responseG / sumOfWeights;
+			int finalB = responseB / sumOfWeights;
+			output[y][x] = packChannels(finalR, finalG, finalB);
+		}
+	}
+}
+
+void applyFilter(std::vector<std::vector<uint32_t>>& colorBuffer) {
+	std::vector<std::vector<uint32_t>> output(HEIGHT, std::vector<uint32_t>(WIDTH));
+	// parallelise workload here
+	std::vector<std::thread> threads;
+	for (int i = 0; i < 4; i++) {
+		int startY = (HEIGHT >> 2) * i;
+		int endY = (HEIGHT >> 2) * (i + 1);
+		threads.emplace_back(useBilteralFilter, glm::vec2{ startY, endY }, std::ref(colorBuffer), std::ref(output));
+	}
+	for (auto& thread : threads) thread.join();
+	colorBuffer = output;
+}
+
+void renderBuffer(std::vector<std::vector<uint32_t>>& colorBuffer, DrawingWindow& window) {
+	for (int y = 0; y < HEIGHT; y++) {
+		for (int x = 0; x < WIDTH; x++) {
+			window.setPixelColour(x, y, colorBuffer[y][x]);
+			window.renderFrame();
+		}
+	}
+}
 
 void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderType& renderer, glm::vec3& lightPosition, bool& hasParametersChanged) {
 	if (event.type == SDL_KEYDOWN) {
@@ -106,7 +196,7 @@ int main(int argc, char *argv[]) {
 	FileReader fr;
 	fr.readMTLFile("textured-cornell-box.mtl");
 	PolygonData objects = fr.readOBJFile("textured-cornell-box.obj", 0.35, { textures.width, textures.height });
-	fr.appendPolygonData(objects, "sphere.obj");
+	//fr.appendPolygonData(objects, "sphere.obj");
 	if (objects.loadedTriangles.empty()) return -1;
 	
 	glm::vec3 sceneMin(std::numeric_limits<float>::min());
@@ -149,13 +239,14 @@ int main(int argc, char *argv[]) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lightPosition, hasParametersChanged);
 		if (renderer == RAYTRACE) {
-			if (!lighting.usePhong) {
-				if (hasParametersChanged) Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
-				Raytrace::useGouraud(window, camera, objects, textures, lightPosition);
+			if (!lighting.usePhong && hasParametersChanged) {
+				Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 			}
-			else {
-				Raytrace::usePhong(window, camera, objects, lightPosition);
+			auto colorBuffer = getRaytrace(camera, objects, textures, lightPosition);
+			if (lighting.useSoftShadow) {
+				applyFilter(colorBuffer);
 			}
+			renderBuffer(colorBuffer, window);
 		}
 		else drawInterpolationRenders(window, camera, objects, renderer, textures);
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
