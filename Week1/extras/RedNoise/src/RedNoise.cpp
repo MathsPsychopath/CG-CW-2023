@@ -35,15 +35,45 @@ void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData
 	}
 }
 
-//std::vector<std::vector<uint32_t>> getRaytrace(DrawingWindow& window, Camera& camera, PolygonData& objects, TextureMap& textures) {
-//	// create results canvas
-//	//glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,1,0 }));
-//	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
-//	std::vector<std::thread> threads;
-//	std::vector<std::vector<uint32_t>> colorBuffer(HEIGHT, std::vector<uint32_t>(WIDTH));
-//	// parallelise workload
-//		// in task, separate
-//}
+std::vector<std::vector<uint32_t>> getRaytrace(Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition) {
+	// create results canvas
+	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
+	std::vector<std::vector<uint32_t>> colorBuffer(HEIGHT, std::vector<uint32_t>(WIDTH));
+	std::vector<std::thread> threads;
+	// parallelise workload
+	
+	for (int i = 0; i < 4; i++) {
+		int startY = (HEIGHT << 2) * i;
+		int endY = (HEIGHT << 2) * (i + 1);
+		threads.emplace_back(Raytrace::renderSegment, glm::vec2{startY, endY}, std::ref(colorBuffer), std::ref(objects), std::ref(camera), std::ref(textures), lightPosition);
+	}
+	for (auto& thread : threads) thread.join();
+	return colorBuffer;
+}
+
+void useBilteralFilter(glm::vec2 boundY, std::vector<std::vector<uint32_t>>& colorBuffer) {
+	// apply bilateral filter algorithm
+}
+
+void applyFilter(std::vector<std::vector<uint32_t>>& colorBuffer) {
+	// parallelise workload here
+	std::vector<std::thread> threads;
+	for (int i = 0; i < 4; i++) {
+		int startY = (HEIGHT << 2) * i;
+		int endY = (HEIGHT << 2) * (i + 1);
+		threads.emplace_back(useBilteralFilter, glm::vec2{ startY, endY }, std::ref(colorBuffer));
+	}
+	for (auto& thread : threads) thread.join();
+}
+
+void renderBuffer(std::vector<std::vector<uint32_t>>& colorBuffer, DrawingWindow& window) {
+	for (int y = 0; y < HEIGHT; y++) {
+		for (int x = 0; x < WIDTH; x++) {
+			window.setPixelColour(x, y, colorBuffer[y][x]);
+			window.renderFrame();
+		}
+	}
+}
 
 void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderType& renderer, glm::vec3& lightPosition, bool& hasParametersChanged) {
 	if (event.type == SDL_KEYDOWN) {
@@ -106,7 +136,7 @@ int main(int argc, char *argv[]) {
 	FileReader fr;
 	fr.readMTLFile("textured-cornell-box.mtl");
 	PolygonData objects = fr.readOBJFile("textured-cornell-box.obj", 0.35, { textures.width, textures.height });
-	fr.appendPolygonData(objects, "sphere.obj");
+	//fr.appendPolygonData(objects, "sphere.obj");
 	if (objects.loadedTriangles.empty()) return -1;
 	
 	glm::vec3 sceneMin(std::numeric_limits<float>::min());
@@ -149,13 +179,14 @@ int main(int argc, char *argv[]) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lightPosition, hasParametersChanged);
 		if (renderer == RAYTRACE) {
-			if (!lighting.usePhong) {
-				if (hasParametersChanged) Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
-				Raytrace::useGouraud(window, camera, objects, textures, lightPosition);
+			if (!lighting.usePhong && hasParametersChanged) {
+				Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 			}
-			else {
-				Raytrace::usePhong(window, camera, objects, lightPosition);
-			}
+			auto colorBuffer = getRaytrace(camera, objects, textures, lightPosition);
+			/*if (lighting.useSoftShadow) {
+				applyFilter(colorBuffer);
+			}*/
+			renderBuffer(colorBuffer, window);
 		}
 		else drawInterpolationRenders(window, camera, objects, renderer, textures);
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !

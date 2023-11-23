@@ -21,7 +21,8 @@ void FileReader::addFileData(PolygonData& objects, std::ifstream& valid_filestre
 			};
 			GouraudVertex vertex(position, currentColor);
 			objects.loadedVertices.push_back(vertex);
-			objects.vertexToTriangles[currentVertex++] = {};
+			objects.vertexToTriangles[currentVertex +  offset] = {};
+			currentVertex++;
 		}
 		else if (identifier == "vt") {
 			objects.loadedTextures.push_back(TexturePoint(std::stof(tokens[1]) * textureScales.x, (std::stof(tokens[2])) * textureScales.y));
