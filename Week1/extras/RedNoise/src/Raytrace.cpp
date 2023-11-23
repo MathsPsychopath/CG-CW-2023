@@ -111,13 +111,18 @@ namespace {
 		return float(hits) / samples;
 	}
 
-	glm::vec2 calculatePhongComponents(PolygonData& objects, RayTriangleIntersection& intersection, glm::vec3 lightPosition, glm::vec3 start) {
-		// interpolate the normal by the pixel
+	glm::vec3 getPhongNormal(PolygonData& objects, RayTriangleIntersection& intersection) {
 		std::array<int, 3> vertices = intersection.intersectedTriangle.vertices;
 		glm::vec3 barycentric = intersection.barycentric;
 		glm::vec3 interpolatedNormal = glm::normalize(objects.loadedVertices[vertices[0]].normal * barycentric[2] +
 			objects.loadedVertices[vertices[1]].normal * barycentric[0] +
 			objects.loadedVertices[vertices[2]].normal * barycentric[1]);
+		return interpolatedNormal;
+	}
+
+	glm::vec2 calculatePhongComponents(PolygonData& objects, RayTriangleIntersection& intersection, glm::vec3 lightPosition, glm::vec3 start) {
+		// interpolate the normal by the pixel
+		glm::vec3 interpolatedNormal = getPhongNormal(objects, intersection);
 		glm::vec3 pixelCoordinates = intersection.intersectionPoint;
 		return getLightAttributes(interpolatedNormal, lightPosition, start, pixelCoordinates);
 	}
@@ -218,6 +223,9 @@ void Raytrace::renderSegment(glm::vec2 boundY, std::vector<std::vector<uint32_t>
 	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
 	for (int y = boundY[0]; y < boundY[1]; y++) {
 		for (int x = 0; x < WIDTH; x++) {
+			if (x == WIDTH / 4 * 3 && y == HEIGHT / 2) {
+				std::cout << "here" << std::endl;
+			}
 			// get point on the ray trace
 			glm::vec3 canvasPosition = getCanvasPosition(camera, x, y, inverseViewMatrix);
 			glm::vec3 direction = glm::normalize(camera.cameraPosition - canvasPosition);
@@ -233,10 +241,18 @@ void Raytrace::renderSegment(glm::vec2 boundY, std::vector<std::vector<uint32_t>
 				continue;
 			}
 
+			float reflectivity = intersection.intersectedTriangle.reflectivity;
 			// conditionally apply reflectiveness 
-			/*if (std::isgreater(intersection.intersectedTriangle.reflectivity, 0)) {
-				glm::vec3 reflectionRay = glm::reflect(-direction)
-			}*/
+			if (std::isgreater(reflectivity, 0)) {
+				// isolate normal interpolation function
+				glm::vec3 normal = getPhongNormal(objects, intersection);
+				// calculate reflection ray
+				glm::vec3 reflectionRay = glm::reflect(direction, normal);
+				// raytrace from intersection point in the direction of the reflection
+				glm::vec3 offsetPoint = intersection.intersectionPoint + 0.01f * normal;
+				auto reflectionPair = raytrace(objects, textures, offsetPoint, reflectionRay, lightOrigin);
+				color = color * (1 - reflectivity) + reflectionPair.first * reflectivity;
+			}
 			colorBuffer[y][x] = color.asNumeric();
 		}
 	}

@@ -243,9 +243,9 @@ int main(int argc, char *argv[]) {
 				Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 			}
 			auto colorBuffer = getRaytrace(camera, objects, textures, lightPosition);
-			if (lighting.useSoftShadow) {
+			/*if (lighting.useSoftShadow) {
 				applyFilter(colorBuffer);
-			}
+			}*/
 			renderBuffer(colorBuffer, window);
 		}
 		else drawInterpolationRenders(window, camera, objects, renderer, textures);

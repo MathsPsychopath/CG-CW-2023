@@ -61,7 +61,7 @@ void FileReader::addFileData(PolygonData& objects, std::ifstream& valid_filestre
 			translation = { -0.5, -1.2, 0.3 };
 		}
 		else if (identifier == "o" && tokens[1] == "tall_box") {
-			reflectivity = 1;
+			reflectivity = 0.8;
 		}
 		else {
 			translation = { 0,0,0 };
