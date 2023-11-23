@@ -43,27 +43,87 @@ std::vector<std::vector<uint32_t>> getRaytrace(Camera& camera, PolygonData& obje
 	// parallelise workload
 	
 	for (int i = 0; i < 4; i++) {
-		int startY = (HEIGHT << 2) * i;
-		int endY = (HEIGHT << 2) * (i + 1);
+		int startY = (HEIGHT >> 2) * i;
+		int endY = (HEIGHT >> 2) * (i + 1);
 		threads.emplace_back(Raytrace::renderSegment, glm::vec2{startY, endY}, std::ref(colorBuffer), std::ref(objects), std::ref(camera), std::ref(textures), lightPosition);
 	}
 	for (auto& thread : threads) thread.join();
 	return colorBuffer;
 }
 
-void useBilteralFilter(glm::vec2 boundY, std::vector<std::vector<uint32_t>>& colorBuffer) {
+float useGaussian(float value, float stddev) {
+	return std::expf(-(glm::pow(value, 2) / (2.0f * glm::pow(stddev, 2))));
+}
+
+void splitChannels(uint32_t packed, int& red, int& green, int& blue) {
+	red = (packed >> 16) & 0xff;
+	green = (packed >> 8) & 0xff;
+	blue = (packed) & 0xff;
+}
+
+uint32_t packChannels(int red, int green, int blue) {
+	return (255 << 24) + (red << 16) + (green << 8) + blue;
+}
+
+void useBilteralFilter(glm::vec2 boundY, std::vector<std::vector<uint32_t>>& colorBuffer, std::vector<std::vector<uint32_t>>& output) {
 	// apply bilateral filter algorithm
+	float sigmaSpace = 2;
+	float sigmaRange = 17;
+	int radius = int(2 * sigmaSpace);
+	
+	for (int y = boundY[0]; y < boundY[1]; y++) {
+		for (int x = 0; x < WIDTH; x++) {
+			float sumOfWeights = 0;
+			float responseR = 0;
+			float responseG = 0;
+			float responseB = 0;
+
+			int currentR, currentG, currentB;
+			splitChannels(colorBuffer[y][x], currentR, currentG, currentB);
+			for (int dx = -radius; dx < radius; dx++) {
+				for (int dy = -radius; dy < radius; dy++) {
+					int nx = x + dx;
+					int ny = y + dy;
+
+					if (nx >= 0 && nx < WIDTH && ny >= 0 && ny < HEIGHT) {
+						int kernelR, kernelG, kernelB;
+						splitChannels(colorBuffer[ny][nx], kernelR, kernelG, kernelB);
+						float colorDist = glm::sqrt(
+							glm::pow(kernelR - currentR, 2) +
+							glm::pow(kernelG - currentG, 2) +
+							glm::pow(kernelB - currentB, 2)
+						);
+
+						float spaceWeight = useGaussian(glm::sqrt(glm::pow(dx, 2) + glm::pow(dy, 2)), sigmaSpace);
+						float rangeWeight = useGaussian(colorDist, sigmaRange);
+						float weight = spaceWeight * rangeWeight;
+
+						responseR += weight * kernelR;
+						responseG += weight * kernelG;
+						responseB += weight * kernelB;
+						sumOfWeights += weight;
+					}
+				}
+			}
+			int finalR = responseR / sumOfWeights;
+			int finalG = responseG / sumOfWeights;
+			int finalB = responseB / sumOfWeights;
+			output[y][x] = packChannels(finalR, finalG, finalB);
+		}
+	}
 }
 
 void applyFilter(std::vector<std::vector<uint32_t>>& colorBuffer) {
+	std::vector<std::vector<uint32_t>> output(HEIGHT, std::vector<uint32_t>(WIDTH));
 	// parallelise workload here
 	std::vector<std::thread> threads;
 	for (int i = 0; i < 4; i++) {
-		int startY = (HEIGHT << 2) * i;
-		int endY = (HEIGHT << 2) * (i + 1);
-		threads.emplace_back(useBilteralFilter, glm::vec2{ startY, endY }, std::ref(colorBuffer));
+		int startY = (HEIGHT >> 2) * i;
+		int endY = (HEIGHT >> 2) * (i + 1);
+		threads.emplace_back(useBilteralFilter, glm::vec2{ startY, endY }, std::ref(colorBuffer), std::ref(output));
 	}
 	for (auto& thread : threads) thread.join();
+	colorBuffer = output;
 }
 
 void renderBuffer(std::vector<std::vector<uint32_t>>& colorBuffer, DrawingWindow& window) {
@@ -183,9 +243,9 @@ int main(int argc, char *argv[]) {
 				Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 			}
 			auto colorBuffer = getRaytrace(camera, objects, textures, lightPosition);
-			/*if (lighting.useSoftShadow) {
+			if (lighting.useSoftShadow) {
 				applyFilter(colorBuffer);
-			}*/
+			}
 			renderBuffer(colorBuffer, window);
 		}
 		else drawInterpolationRenders(window, camera, objects, renderer, textures);
