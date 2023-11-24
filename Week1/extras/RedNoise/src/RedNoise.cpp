@@ -7,11 +7,12 @@
 #include "Wireframe.h"
 #include "Raytrace.h"
 
-void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type, TextureMap& textures) {
+void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type, TextureMap& textures, std::set<std::string>& hiddenObjects) {
 	window.clearPixels();
 	glm::mat3 viewMatrix = camera.viewMatrix;
 	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
 	for (int triangleIndex = 0; triangleIndex < objects.loadedTriangles.size(); triangleIndex++) {
+		if (hiddenObjects.find(objects.loadedTriangles[triangleIndex].objectName) != hiddenObjects.end()) continue;
 		CanvasPoint first = Wireframe::canvasIntersection(camera, objects.getTriangleVertexPosition(triangleIndex, 0), 2.0, viewMatrix);
 		CanvasPoint second = Wireframe::canvasIntersection(camera, objects.getTriangleVertexPosition(triangleIndex, 1), 2.0, viewMatrix);
 		CanvasPoint third = Wireframe::canvasIntersection(camera, objects.getTriangleVertexPosition(triangleIndex, 2), 2.0, viewMatrix);
@@ -35,7 +36,7 @@ void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData
 	}
 }
 
-std::vector<std::vector<uint32_t>> getRaytrace(Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition) {
+std::vector<std::vector<uint32_t>> getRaytrace(Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition, std::set<std::string>& hiddenObjects) {
 	// create results canvas
 	std::vector<std::vector<uint32_t>> colorBuffer(HEIGHT, std::vector<uint32_t>(WIDTH));
 	std::vector<std::thread> threads;
@@ -44,7 +45,7 @@ std::vector<std::vector<uint32_t>> getRaytrace(Camera& camera, PolygonData& obje
 	for (int i = 0; i < 4; i++) {
 		int startY = (HEIGHT >> 2) * i;
 		int endY = (HEIGHT >> 2) * (i + 1);
-		threads.emplace_back(Raytrace::renderSegment, glm::vec2{startY, endY}, std::ref(colorBuffer), std::ref(objects), std::ref(camera), std::ref(textures), lightPosition);
+		threads.emplace_back(Raytrace::renderSegment, glm::vec2{startY, endY}, std::ref(colorBuffer), std::ref(objects), std::ref(camera), std::ref(textures), lightPosition, std::ref(hiddenObjects));
 	}
 	for (auto& thread : threads) thread.join();
 	return colorBuffer;
@@ -237,23 +238,24 @@ int main(int argc, char *argv[]) {
 	bool isCameraMoving = true;
 	float progression = 0;
 	int stage = 0;
+	std::set<std::string> hiddenObjects = {};
 	
 
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lightPosition, hasParametersChanged);
-		camera.useAnimation(progression, stage, renderer);
+		camera.useAnimation(progression, stage, renderer, hiddenObjects);
 		if (renderer == RAYTRACE) {
-			if (!lighting.usePhong && hasParametersChanged) {
+			if (!lighting.usePhong) {
 				Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 			}
-			auto colorBuffer = getRaytrace(camera, objects, textures, lightPosition);
+			auto colorBuffer = getRaytrace(camera, objects, textures, lightPosition, hiddenObjects);
 			/*if (lighting.useSoftShadow) {
 				applyFilter(colorBuffer);
 			}*/
 			renderBuffer(colorBuffer, window);
 		}
-		else drawInterpolationRenders(window, camera, objects, renderer, textures);
+		else drawInterpolationRenders(window, camera, objects, renderer, textures, hiddenObjects);
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
 		window.renderFrame();
 		if (progression > 1) {

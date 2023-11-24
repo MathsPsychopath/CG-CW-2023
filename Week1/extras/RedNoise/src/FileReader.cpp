@@ -10,6 +10,7 @@ void FileReader::addFileData(PolygonData& objects, std::ifstream& valid_filestre
 	int currentVertex = 0;
 	glm::vec3 translation = { 0,0,0 };
 	float reflectivity = 0;
+	std::string name;
 	while (std::getline(valid_filestream, line)) {
 		std::vector<std::string> tokens = split(line, ' ');
 		// process each line
@@ -49,19 +50,23 @@ void FileReader::addFileData(PolygonData& objects, std::ifstream& valid_filestre
 				parsed.colour = Colour();
 			}
 			parsed.reflectivity = reflectivity;
+			parsed.objectName = name;
 			objects.loadedTriangles.push_back(parsed);
 			objects.vertexToTriangles[vIndex1].insert(objects.loadedTriangles.size() - 1);
 			objects.vertexToTriangles[vIndex2].insert(objects.loadedTriangles.size() - 1);
 			objects.vertexToTriangles[vIndex3].insert(objects.loadedTriangles.size() - 1);
 		}
+		else if (identifier == "o") {
+			name = tokens[1];
+			if (name == "red_sphere") {
+				translation = { -0.5, -1.2, 0.3 };
+			}
+			else if (tokens[1] == "tall_box") {
+				reflectivity = 0.8;
+			}
+		}
 		else if (identifier == "usemtl") {
 			currentColor = supportedColors[tokens[1]];
-		}
-		else if (identifier == "o" && tokens[1] == "red_sphere") {
-			translation = { -0.5, -1.2, 0.3 };
-		}
-		else if (identifier == "o" && tokens[1] == "tall_box") {
-			reflectivity = 0.8;
 		}
 		else {
 			translation = { 0,0,0 };

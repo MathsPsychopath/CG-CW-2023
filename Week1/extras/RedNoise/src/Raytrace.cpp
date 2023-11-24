@@ -47,7 +47,7 @@ namespace {
 		return true;
 	}
 
-	RayTriangleIntersection getClosestValidIntersection(glm::vec3& startPosition, glm::vec3& rayDirection, PolygonData& objects, int excludeID = -1, float lightDistance = std::numeric_limits<float>::max()) {
+	RayTriangleIntersection getClosestValidIntersection(glm::vec3& startPosition, glm::vec3& rayDirection, PolygonData& objects, int excludeID = -1, float lightDistance = std::numeric_limits<float>::max(), std::set<std::string>& hiddenObjects = std::set<std::string>{}) {
 		RayTriangleIntersection closest;
 		closest.distanceFromCamera = std::numeric_limits<float>::max();
 		closest.triangleIndex = -1;
@@ -57,6 +57,7 @@ namespace {
 				continue;
 			}
 			if (triangleIndex == excludeID) continue;
+			if (hiddenObjects.find(objects.loadedTriangles[triangleIndex].objectName) != hiddenObjects.end()) continue;
 			glm::vec3 e0 = objects.getTriangleVertexPosition(triangleIndex, 1) - objects.getTriangleVertexPosition(triangleIndex, 0);
 			glm::vec3 e1 = objects.getTriangleVertexPosition(triangleIndex, 2) - objects.getTriangleVertexPosition(triangleIndex, 0);
 			glm::vec3 SPVector = startPosition - objects.getTriangleVertexPosition(triangleIndex, 0);
@@ -93,7 +94,7 @@ namespace {
 		return camera.cameraPosition + displacement;
 	}
 	
-	float getSoftShadow(PolygonData& objects, RayTriangleIntersection& initialIntersection, glm::vec3& lightPosition, glm::vec3 cameraPosition) {
+	float getSoftShadow(PolygonData& objects, RayTriangleIntersection& initialIntersection, glm::vec3& lightPosition, glm::vec3 cameraPosition, std::set<std::string>& hiddenObjects) {
 		// check they're on the same side
 		glm::vec3 normal = initialIntersection.intersectedTriangle.normal;
 		glm::vec3 offset = initialIntersection.intersectionPoint + 0.01f * normal;
@@ -112,7 +113,7 @@ namespace {
 			glm::vec3 direction = glm::normalize(sampledLight - offsetPoint);
 			float lightDistance = glm::length(sampledLight - offsetPoint);
 			RayTriangleIntersection shadowIntersection = 
-				getClosestValidIntersection(offsetPoint, direction, objects, initialIntersection.triangleIndex, lightDistance);
+				getClosestValidIntersection(offsetPoint, direction, objects, initialIntersection.triangleIndex, lightDistance, hiddenObjects);
 			if (shadowIntersection.triangleIndex == -1) hits += 1;
 		}
 
@@ -171,9 +172,9 @@ namespace {
 		]);
 	}
 
-	std::pair<Colour, RayTriangleIntersection> raytrace(PolygonData& objects, TextureMap& textures, glm::vec3 start, glm::vec3 direction, glm::vec3 lightOrigin, Camera& camera) {
+	std::pair<Colour, RayTriangleIntersection> raytrace(PolygonData& objects, TextureMap& textures, glm::vec3 start, glm::vec3 direction, glm::vec3 lightOrigin, Camera& camera, std::set<std::string>& hiddenObjects) {
 		// get initial ray trace
-		RayTriangleIntersection intersection = getClosestValidIntersection(start, direction, objects);
+		RayTriangleIntersection intersection = getClosestValidIntersection(start, direction, objects, -1, FLT_MAX,hiddenObjects);
 		if (intersection.triangleIndex == -1) {
 			return { Colour(), intersection };
 		}
@@ -191,7 +192,7 @@ namespace {
 			if (cameraNormalAngle > 0 || cameraNormalAngle > 0 && lightNormalAngle < 0) {
 				float lightDistance = glm::length(lightOrigin - camera.cameraPosition);
 				RayTriangleIntersection shadowIntersection =
-					getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
+					getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance, hiddenObjects);
 
 				if (shadowIntersection.triangleIndex != -1) {
 					RayTriangleIntersection hardShadow(glm::vec3{ 0,0,0 }, 0, ModelTriangle(), -1);
@@ -225,7 +226,7 @@ namespace {
 
 		float brightness = 1;
 		if (lighting.useSoftShadow) {
-			brightness = getSoftShadow(objects, intersection, lightOrigin, camera.cameraPosition);
+			brightness = getSoftShadow(objects, intersection, lightOrigin, camera.cameraPosition, hiddenObjects);
 		}
 
 		Colour ambience = lighting.useAmbience ? globalAmbientColor : Colour();
@@ -235,7 +236,7 @@ namespace {
 	}
 }
 
-void Raytrace::renderSegment(glm::vec2 boundY, std::vector<std::vector<uint32_t>>& colorBuffer, PolygonData& objects, Camera& camera, TextureMap& textures, glm::vec3 lightOrigin) {
+void Raytrace::renderSegment(glm::vec2 boundY, std::vector<std::vector<uint32_t>>& colorBuffer, PolygonData& objects, Camera& camera, TextureMap& textures, glm::vec3 lightOrigin, std::set<std::string>& hiddenObjects) {
 	glm::mat3 inverseViewMatrix = glm::inverse(camera.viewMatrix);
 	for (int y = boundY[0]; y < boundY[1]; y++) {
 		for (int x = 0; x < WIDTH; x++) {
@@ -247,7 +248,7 @@ void Raytrace::renderSegment(glm::vec2 boundY, std::vector<std::vector<uint32_t>
 			glm::vec3 direction = glm::normalize(camera.cameraPosition - canvasPosition);
 
 
-			auto colorTrianglePair = raytrace(objects, textures, camera.cameraPosition, direction, lightOrigin, camera);
+			auto colorTrianglePair = raytrace(objects, textures, camera.cameraPosition, direction, lightOrigin, camera, hiddenObjects);
 
 			Colour color = colorTrianglePair.first;
 			RayTriangleIntersection intersection = colorTrianglePair.second;
@@ -267,7 +268,7 @@ void Raytrace::renderSegment(glm::vec2 boundY, std::vector<std::vector<uint32_t>
 				glm::vec3 reflectionRay = glm::reflect(direction, normal);
 				// raytrace from intersection point in the direction of the reflection
 				glm::vec3 offsetPoint = intersection.intersectionPoint + 0.01f * normal;
-				auto reflectionPair = raytrace(objects, textures, offsetPoint, reflectionRay, lightOrigin, camera);
+				auto reflectionPair = raytrace(objects, textures, offsetPoint, reflectionRay, lightOrigin, camera, hiddenObjects);
 				color = color * (1 - reflectivity) + reflectionPair.first * reflectivity;
 			}
 			colorBuffer[y][x] = color.asNumeric();

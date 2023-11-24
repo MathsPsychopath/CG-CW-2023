@@ -67,7 +67,7 @@ void Camera::useBezierPosition(float progress, glm::vec3 start, glm::vec3 initia
 	this->cameraPosition = point;
 }
 
-void Camera::useAnimation(float& progress, int stage, RenderType& renderer) {
+void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std::set<std::string>& hiddenObjects) {
 	if (stage == 0) {
 		// trucking movement to go past the cornell box
 		renderer = RASTER;
@@ -109,6 +109,9 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer) {
 		progress += 0.004;
 	}
 	else if (stage == 5) {
+		// go right top middle
+		renderer = RASTER;
+		hiddenObjects.insert("ceiling");
 		//std::cout << cameraPosition.x << ", " << cameraPosition.y << ", " << cameraPosition.z << std::endl;
 		glm::vec3 start(0.07, 0.065, 1.5);
 		glm::vec3 initialDirection(1, 0.9, 0);
