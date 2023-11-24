@@ -2,15 +2,17 @@
 
 Camera::Camera(float x, float y, float z) {
 	this->cameraPosition = glm::vec3(x,y,z);
+	this->viewMatrix = glm::mat3();
 }
 
 void Camera::translate(glm::vec3 movementVector) {
 	this->cameraPosition += movementVector;
 }
 
-void Camera::rotate(float xAnticlockwiseDegree, float yAnticlockwiseDegree) {
+void Camera::rotate(float xAnticlockwiseDegree, float yAnticlockwiseDegree, float zAnticlockwiseDegree) {
 	const float xRad = glm::radians(xAnticlockwiseDegree);
 	const float yRad = glm::radians(yAnticlockwiseDegree);
+	const float zRad = glm::radians(zAnticlockwiseDegree);
 
 	const glm::mat3 xRotationMatrix = { 
 		1.0, 0.0, 0.0,
@@ -24,11 +26,18 @@ void Camera::rotate(float xAnticlockwiseDegree, float yAnticlockwiseDegree) {
 		std::sin(yRad), 0.0, std::cos(yRad),
 	};
 
-	this->cameraPosition = xRotationMatrix*this->cameraPosition;
-	this->cameraPosition = yRotationMatrix*this->cameraPosition;
+	const glm::mat3 zRotationMatrix = {
+		std::cos(zRad), std::sin(zRad), 0,
+		-std::sin(zRad), std::cos(zRad), 0,
+		0, 0, 1
+	};
+
+	this->cameraPosition = xRotationMatrix * this->cameraPosition;
+	this->cameraPosition = yRotationMatrix * this->cameraPosition;
+	this->cameraPosition = zRotationMatrix * this->cameraPosition;
 }
 
-glm::mat3 Camera::lookAt(glm::vec3 target) {
+void Camera::lookAt(glm::vec3 target) {
 	// calculates the forward, right, up vectors given the target and the world vertical
 	glm::vec3 forward = glm::normalize(this->cameraPosition - target);
 
@@ -38,5 +47,70 @@ glm::mat3 Camera::lookAt(glm::vec3 target) {
 
 	// mat3 is column-major, so we supply vectors directly
 	glm::mat3 viewMatrix = glm::mat3(right, up, forward);
-	return viewMatrix;
+	this->viewMatrix = viewMatrix;
+}
+
+void Camera::useBezierPosition(float progress, glm::vec3 start, glm::vec3 initialDirection, glm::vec3 finalDirection, glm::vec3 end) {
+	// progress is between 0 and 1
+	float inverseProgress = 1 - progress;
+	float quadProgress = glm::pow(progress, 2);
+	float quadInvProgress = glm::pow(inverseProgress, 2);
+	float cubicInvProgress = glm::pow(inverseProgress, 3);
+	float cubicProgress = glm::pow(progress, 3);
+
+	// this is literally binomial expansion
+	glm::vec3 point = cubicInvProgress * start;
+	point += 3 * quadInvProgress * progress * initialDirection;
+	point += 3 * inverseProgress * quadProgress * finalDirection;
+	point += cubicProgress * end;
+
+	this->cameraPosition = point;
+}
+
+void Camera::useAnimation(float& progress, int stage, RenderType& renderer) {
+	//if (stage == 0) {
+	//	// trucking movement to go past the cornell box
+	//	renderer = RASTER;
+	//	glm::vec3 start(-3, 0, 4);
+	//	glm::vec3 initialDirection(-1, 0, 4);
+	//	glm::vec3 finalDirection(1, 0, 4);
+	//	glm::vec3 end(3, 0, 4);
+
+	//	useBezierPosition(progress, start, initialDirection, finalDirection, end);
+	//	progress += 0.00625;
+	//}
+	//else if (stage == 1) {
+	//	// slowly turn towards the box
+	//	lookAt({ 3 - 3*progress,0,0});
+	//	progress += 0.00625;
+	//}
+	//else if (stage == 2) {
+	//	// look at box whilst retracing halfway
+	//	lookAt({ 0,0,0 });
+	//	glm::vec3 start(3, 0, 4);
+	//	glm::vec3 initialDirection(2, 0, 4);
+	//	glm::vec3 finalDirection(1, 0, 4);
+	//	glm::vec3 end(0, 0, 4);
+	//	useBezierPosition(progress, start, initialDirection, finalDirection, end);
+	//	progress += 0.0125;
+	//}
+	//else if (stage == 3) {
+	//	// orbit the box in sinusoidal pattern
+	//	renderer = POINTCLOUD;
+	//	rotate(glm::sin(progress/ 9.5), 0.1375, 0);
+	//	if (progress > 0.5) renderer = WIREFRAME;
+	//	progress += float(1)/7200;
+	//	lookAt({ 0,0,0 });
+	//}
+	if (stage == 0) {
+		// dolly into the box
+		renderer = WIREFRAME;
+		translate({ 0,0,-0.01 });
+		lookAt({ 0,0,0 });
+		progress += 0.01;
+	}
+	else {
+		
+		//renderer = RAYTRACE;
+	}
 }

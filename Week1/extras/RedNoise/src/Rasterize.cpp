@@ -52,8 +52,8 @@ namespace {
 			textureA * coordinates.A +
 			textureB * coordinates.B +
 			textureC * coordinates.C;
-
-		return textures.pixels[std::floor(glm::max(textureCoordinate.x, 0.0f)) + std::floor(glm::max(textureCoordinate.y, 0.0f)) * width];
+		unsigned long long pixel = std::floor(glm::max(textureCoordinate.x, 0.0f)) + std::floor(glm::max(textureCoordinate.y, 0.0f)) * width;
+		return textures.pixels[glm::min(textures.pixels.size() - 1, pixel)];
 	}
 }
 

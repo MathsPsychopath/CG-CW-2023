@@ -9,7 +9,7 @@
 
 void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type, TextureMap& textures) {
 	window.clearPixels();
-	glm::mat3 viewMatrix = camera.lookAt({ 0,0,0 }); 
+	glm::mat3 viewMatrix = camera.viewMatrix;
 	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
 	for (int triangleIndex = 0; triangleIndex < objects.loadedTriangles.size(); triangleIndex++) {
 		CanvasPoint first = Wireframe::canvasIntersection(camera, objects.getTriangleVertexPosition(triangleIndex, 0), 2.0, viewMatrix);
@@ -37,7 +37,6 @@ void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData
 
 std::vector<std::vector<uint32_t>> getRaytrace(Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition) {
 	// create results canvas
-	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
 	std::vector<std::vector<uint32_t>> colorBuffer(HEIGHT, std::vector<uint32_t>(WIDTH));
 	std::vector<std::thread> threads;
 	// parallelise workload
@@ -127,7 +126,7 @@ void applyFilter(std::vector<std::vector<uint32_t>>& colorBuffer) {
 }
 
 void renderBuffer(std::vector<std::vector<uint32_t>>& colorBuffer, DrawingWindow& window) {
-	for (int y = 0; y < HEIGHT; y++) {
+	for (int y = HEIGHT - 1; y > -1; y--) {
 		for (int x = 0; x < WIDTH; x++) {
 			window.setPixelColour(x, y, colorBuffer[y][x]);
 			window.renderFrame();
@@ -140,11 +139,11 @@ void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderT
 		hasParametersChanged = true;
 		if (event.key.keysym.sym == SDLK_LEFT) {
 			if (renderer == RAYTRACE) lightPosition += glm::vec3(-0.25, 0, 0);
-			else camera.rotate(0, -1);
+			else camera.rotate(0, -1, 0);
 		}
 		else if (event.key.keysym.sym == SDLK_RIGHT) {
 			if (renderer == RAYTRACE) lightPosition += glm::vec3(0.25, 0, 0);
-			else camera.rotate(0, 1);
+			else camera.rotate(0, 1, 0);
 		}
 		else if (event.key.keysym.sym == SDLK_UP) {
 			if (renderer == RAYTRACE) lightPosition += glm::vec3(0, 0.25, 0);
@@ -231,13 +230,20 @@ int main(int argc, char *argv[]) {
 	}
 
 	RenderType renderer = RAYTRACE;
-	glm::vec3 lightPosition = { 0, 0.5, 0.25 };
+	//glm::vec3 lightPosition = { 0, 0.5, 0.25 };
+	glm::vec3 lightPosition = { 0, 0.5, 0.75 };
 	bool hasParametersChanged = true;
 	if (!lighting.usePhong) Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
+
+	bool isCameraMoving = true;
+	float progression = 0;
+	int stage = 0;
+	
 
 	while (true) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lightPosition, hasParametersChanged);
+		camera.useAnimation(progression, stage, renderer);
 		if (renderer == RAYTRACE) {
 			if (!lighting.usePhong && hasParametersChanged) {
 				Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
@@ -251,5 +257,9 @@ int main(int argc, char *argv[]) {
 		else drawInterpolationRenders(window, camera, objects, renderer, textures);
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
 		window.renderFrame();
+		if (progression > 1) {
+			progression = 0;
+			stage++;
+		}
 	}
 }
