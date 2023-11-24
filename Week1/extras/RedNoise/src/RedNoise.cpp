@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
 	FileReader fr;
 	fr.readMTLFile("textured-cornell-box.mtl");
 	PolygonData objects = fr.readOBJFile("textured-cornell-box.obj", 0.35, { textures.width, textures.height });
-	//fr.appendPolygonData(objects, "sphere.obj");
+	fr.appendPolygonData(objects, "sphere.obj");
 	if (objects.loadedTriangles.empty()) return -1;
 	
 	glm::vec3 sceneMin(std::numeric_limits<float>::min());
@@ -238,13 +238,13 @@ int main(int argc, char *argv[]) {
 	bool isCameraMoving = true;
 	float progression = 0;
 	int stage = 0;
-	std::set<std::string> hiddenObjects = {};
+	std::set<std::string> hiddenObjects = {"red_sphere"};
 	
-
-	while (true) {
+	int frame = 0;
+	while (isCameraMoving) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lightPosition, hasParametersChanged);
-		camera.useAnimation(progression, stage, renderer, hiddenObjects);
+		camera.useAnimation(progression, stage, renderer, hiddenObjects, lighting, isCameraMoving);
 		if (renderer == RAYTRACE) {
 			if (!lighting.usePhong) {
 				Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
@@ -257,7 +257,11 @@ int main(int argc, char *argv[]) {
 		}
 		else drawInterpolationRenders(window, camera, objects, renderer, textures, hiddenObjects);
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
+		std::string frameString = std::to_string(frame++);
+		std::string filename = "frame" + std::string(4 - std::min(4, int(frameString.length())), '0') + frameString + ".bmp";
 		window.renderFrame();
+		window.saveBMP("./renders/" + filename);
+		std::cout << "rendered frame " << frame << std::endl;
 		if (progression > 1) {
 			progression = 0;
 			stage++;

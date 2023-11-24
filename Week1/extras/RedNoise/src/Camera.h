@@ -5,6 +5,7 @@
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
 #include <set>
+#include "Lighting.h"
 
 class Camera {
 private:
@@ -22,5 +23,5 @@ public:
 
 	void lookAt(glm::vec3 target);
 
-	void useAnimation(float& progress, int stage, RenderType& renderer, std::set<std::string>& hiddenObjects);
+	void useAnimation(float& progress, int stage, RenderType& renderer, std::set<std::string>& hiddenObjects, Lighting& lighting, bool& isCameraMoving);
 };

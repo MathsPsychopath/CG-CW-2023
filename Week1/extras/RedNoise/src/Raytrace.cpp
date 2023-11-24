@@ -53,11 +53,11 @@ namespace {
 		closest.triangleIndex = -1;
 		glm::vec3 invertedDirection = 1.0f / rayDirection;
 		for (int triangleIndex = 0; triangleIndex < objects.loadedTriangles.size(); triangleIndex++) {
+			if (triangleIndex == excludeID) continue;
+			if (hiddenObjects.find(objects.loadedTriangles[triangleIndex].objectName) != hiddenObjects.end()) continue;
 			if (!intersectsBoundingBox(objects.loadedTriangles[triangleIndex], invertedDirection, startPosition)) {
 				continue;
 			}
-			if (triangleIndex == excludeID) continue;
-			if (hiddenObjects.find(objects.loadedTriangles[triangleIndex].objectName) != hiddenObjects.end()) continue;
 			glm::vec3 e0 = objects.getTriangleVertexPosition(triangleIndex, 1) - objects.getTriangleVertexPosition(triangleIndex, 0);
 			glm::vec3 e1 = objects.getTriangleVertexPosition(triangleIndex, 2) - objects.getTriangleVertexPosition(triangleIndex, 0);
 			glm::vec3 SPVector = startPosition - objects.getTriangleVertexPosition(triangleIndex, 0);
@@ -260,7 +260,7 @@ void Raytrace::renderSegment(glm::vec2 boundY, std::vector<std::vector<uint32_t>
 
 			float reflectivity = intersection.intersectedTriangle.reflectivity;
 			// conditionally apply reflectiveness 
-			if (std::isgreater(reflectivity, 0)) {
+			if (lighting.useReflections && std::isgreater(reflectivity, 0)) {
 				// isolate normal interpolation function
 				
 				glm::vec3 normal = lighting.usePhong ? getPhongNormal(objects, intersection) : intersection.intersectedTriangle.normal;

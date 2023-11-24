@@ -67,7 +67,7 @@ void Camera::useBezierPosition(float progress, glm::vec3 start, glm::vec3 initia
 	this->cameraPosition = point;
 }
 
-void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std::set<std::string>& hiddenObjects) {
+void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std::set<std::string>& hiddenObjects, Lighting& lighting, bool& isCameraMoving) {
 	if (stage == 0) {
 		// trucking movement to go past the cornell box
 		renderer = RASTER;
@@ -77,12 +77,12 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 		glm::vec3 end(3, 0, 4);
 
 		useBezierPosition(progress, start, initialDirection, finalDirection, end);
-		progress += 0.00625;
+		progress += 1.0/90;
 	}
 	else if (stage == 1) {
-		// slowly turn towards the box
+		// turn towards the box
 		lookAt({ 3 - 3*progress,0,0});
-		progress += 0.00625;
+		progress += 0.025;
 	}
 	else if (stage == 2) {
 		// look at box whilst retracing halfway
@@ -92,43 +92,83 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 		glm::vec3 finalDirection(1, 0, 4);
 		glm::vec3 end(0, 0, 4);
 		useBezierPosition(progress, start, initialDirection, finalDirection, end);
-		progress += 0.0125;
+		progress += 0.025;
 	}
 	else if (stage == 3) {
-		// orbit the box in sinusoidal pattern
+		// half orbit the box with pointcloud
 		renderer = POINTCLOUD;
-		rotate(glm::sin(progress/ 9.5), 0.1375, 0);
-		if (progress > 0.5) renderer = WIREFRAME;
-		progress += float(1)/7200;
+		rotate(1, 0, 0);
+		progress += 1.0 / 90;
 		lookAt({ 0,0,0 });
 	}
 	else if (stage == 4) {
-		// dolly into the box
+		// orbit the box
 		renderer = WIREFRAME;
-		translate({ 0,0,-0.01 });
-		progress += 0.004;
+		rotate(1, 0, 0);
+		progress += 1.0/90;
+		lookAt({ 0,0,0 });
 	}
 	else if (stage == 5) {
-		// go right top middle
 		renderer = RASTER;
+		rotate(1, 1, 0);
+		progress += 1.0 / 125;
+		lookAt({ 0,0,0 });
+	}
+	else if (stage == 6) {
+		// dolly into the box
+		translate({ 0,0,-0.05 });
+		progress += 0.025;
+	}
+	else if (stage == 7) {
+		// go right top middle
+		if (progress > 0.8) {
+			renderer = RAYTRACE;
+			lighting.useAmbience = true;
+			lighting.useShadow = true;
+		}
 		hiddenObjects.insert("ceiling");
-		//std::cout << cameraPosition.x << ", " << cameraPosition.y << ", " << cameraPosition.z << std::endl;
+		hiddenObjects.insert("right_wall");
 		glm::vec3 start(0.07, 0.065, 1.5);
 		glm::vec3 initialDirection(1, 0.9, 0);
 		glm::vec3 finalDirection(2, 0.9, 4);
 		glm::vec3 end(0.9, 0.9, 0);
 		useBezierPosition(progress, start, initialDirection, finalDirection, end);
 		lookAt({ 0,0,0 });
-		progress += 0.0004;
+		progress += 0.025;
 	}
 	else if (stage == 6) {
+		if (progress > 0.2) {
+			hiddenObjects.erase("red_sphere");
+			lighting.useIncidence = true;
+		}
+		if (progress > 0.3) {
+			lighting.useSpecular = true;
+			lighting.useShadow = false;
+		}
+		if (progress > 0.4) {
+			lighting.useSoftShadow = true;
+		}
+		if (progress > 0.5) {
+			lighting.useReflections = true;
+		}
+		if (progress > 0.6) {
+			lighting.usePhong = true;
+			lighting.useIncidence = false;
+			lighting.useProximity = false;
+		}
+		if (progress > 0.7) {
+			lighting.useProximity = true;
+		}
+		if (progress > 0.8) {
+			lighting.useIncidence = true;
+		}
 		glm::vec3 start(0.9, 0.9, 0);
 		glm::vec3 initialDirection(1, 1, 0);
 		glm::vec3 finalDirection(3, 0, -1);
 		glm::vec3 end(0, 0.9, 1);
 		useBezierPosition(progress, start, initialDirection, finalDirection, end);
 		lookAt({ 0,0,0 });
-		progress += 0.0004;
+		progress += 0.01;
 	}
 	else if (stage == 7) {
 		glm::vec3 start(0, 0.9, 1);
@@ -137,10 +177,9 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 		glm::vec3 end(0, 0.9, -0.7);
 		useBezierPosition(progress, start, initialDirection, finalDirection, end);
 		lookAt({ 0,0,0 });
-		progress += 0.0004;
+		progress += 0.02;
 	}
 	else {
-		renderer = RAYTRACE;
-
+		isCameraMoving = false;
 	}
 }

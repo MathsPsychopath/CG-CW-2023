@@ -11,6 +11,7 @@ struct Lighting{
 	bool useAmbience;
 	bool usePhong;
 	bool useSoftShadow;
+	bool useReflections;
 
 	Lighting(bool initAmb, bool initShadow, bool initDiffuse, bool initSpec, bool initPhong, bool initSoft);
 
