@@ -189,10 +189,9 @@ namespace {
 			float cameraNormalAngle = glm::dot(normal, cameraDirection);
 			float lightNormalAngle = glm::dot(normal, lightDirection);
 			if (cameraNormalAngle > 0 || cameraNormalAngle > 0 && lightNormalAngle < 0) {
-				glm::vec3 lightDirection = glm::normalize(lightOrigin - offsetPoint);
 				float lightDistance = glm::length(lightOrigin - camera.cameraPosition);
 				RayTriangleIntersection shadowIntersection =
-					getClosestValidIntersection(offsetPoint, lightDirection, objects);
+					getClosestValidIntersection(offsetPoint, lightDirection, objects, intersection.triangleIndex, lightDistance);
 
 				if (shadowIntersection.triangleIndex != -1) {
 					RayTriangleIntersection hardShadow(glm::vec3{ 0,0,0 }, 0, ModelTriangle(), -1);
@@ -262,7 +261,8 @@ void Raytrace::renderSegment(glm::vec2 boundY, std::vector<std::vector<uint32_t>
 			// conditionally apply reflectiveness 
 			if (std::isgreater(reflectivity, 0)) {
 				// isolate normal interpolation function
-				glm::vec3 normal = getPhongNormal(objects, intersection);
+				
+				glm::vec3 normal = lighting.usePhong ? getPhongNormal(objects, intersection) : intersection.intersectedTriangle.normal;
 				// calculate reflection ray
 				glm::vec3 reflectionRay = glm::reflect(direction, normal);
 				// raytrace from intersection point in the direction of the reflection

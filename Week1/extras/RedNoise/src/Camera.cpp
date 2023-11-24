@@ -68,49 +68,76 @@ void Camera::useBezierPosition(float progress, glm::vec3 start, glm::vec3 initia
 }
 
 void Camera::useAnimation(float& progress, int stage, RenderType& renderer) {
-	//if (stage == 0) {
-	//	// trucking movement to go past the cornell box
-	//	renderer = RASTER;
-	//	glm::vec3 start(-3, 0, 4);
-	//	glm::vec3 initialDirection(-1, 0, 4);
-	//	glm::vec3 finalDirection(1, 0, 4);
-	//	glm::vec3 end(3, 0, 4);
-
-	//	useBezierPosition(progress, start, initialDirection, finalDirection, end);
-	//	progress += 0.00625;
-	//}
-	//else if (stage == 1) {
-	//	// slowly turn towards the box
-	//	lookAt({ 3 - 3*progress,0,0});
-	//	progress += 0.00625;
-	//}
-	//else if (stage == 2) {
-	//	// look at box whilst retracing halfway
-	//	lookAt({ 0,0,0 });
-	//	glm::vec3 start(3, 0, 4);
-	//	glm::vec3 initialDirection(2, 0, 4);
-	//	glm::vec3 finalDirection(1, 0, 4);
-	//	glm::vec3 end(0, 0, 4);
-	//	useBezierPosition(progress, start, initialDirection, finalDirection, end);
-	//	progress += 0.0125;
-	//}
-	//else if (stage == 3) {
-	//	// orbit the box in sinusoidal pattern
-	//	renderer = POINTCLOUD;
-	//	rotate(glm::sin(progress/ 9.5), 0.1375, 0);
-	//	if (progress > 0.5) renderer = WIREFRAME;
-	//	progress += float(1)/7200;
-	//	lookAt({ 0,0,0 });
-	//}
 	if (stage == 0) {
+		// trucking movement to go past the cornell box
+		renderer = RASTER;
+		glm::vec3 start(-3, 0, 4);
+		glm::vec3 initialDirection(-1, 0, 4);
+		glm::vec3 finalDirection(1, 0, 4);
+		glm::vec3 end(3, 0, 4);
+
+		useBezierPosition(progress, start, initialDirection, finalDirection, end);
+		progress += 0.00625;
+	}
+	else if (stage == 1) {
+		// slowly turn towards the box
+		lookAt({ 3 - 3*progress,0,0});
+		progress += 0.00625;
+	}
+	else if (stage == 2) {
+		// look at box whilst retracing halfway
+		lookAt({ 0,0,0 });
+		glm::vec3 start(3, 0, 4);
+		glm::vec3 initialDirection(2, 0, 4);
+		glm::vec3 finalDirection(1, 0, 4);
+		glm::vec3 end(0, 0, 4);
+		useBezierPosition(progress, start, initialDirection, finalDirection, end);
+		progress += 0.0125;
+	}
+	else if (stage == 3) {
+		// orbit the box in sinusoidal pattern
+		renderer = POINTCLOUD;
+		rotate(glm::sin(progress/ 9.5), 0.1375, 0);
+		if (progress > 0.5) renderer = WIREFRAME;
+		progress += float(1)/7200;
+		lookAt({ 0,0,0 });
+	}
+	else if (stage == 4) {
 		// dolly into the box
 		renderer = WIREFRAME;
 		translate({ 0,0,-0.01 });
+		progress += 0.004;
+	}
+	else if (stage == 5) {
+		//std::cout << cameraPosition.x << ", " << cameraPosition.y << ", " << cameraPosition.z << std::endl;
+		glm::vec3 start(0.07, 0.065, 1.5);
+		glm::vec3 initialDirection(1, 0.9, 0);
+		glm::vec3 finalDirection(2, 0.9, 4);
+		glm::vec3 end(0.9, 0.9, 0);
+		useBezierPosition(progress, start, initialDirection, finalDirection, end);
 		lookAt({ 0,0,0 });
-		progress += 0.01;
+		progress += 0.0004;
+	}
+	else if (stage == 6) {
+		glm::vec3 start(0.9, 0.9, 0);
+		glm::vec3 initialDirection(1, 1, 0);
+		glm::vec3 finalDirection(3, 0, -1);
+		glm::vec3 end(0, 0.9, 1);
+		useBezierPosition(progress, start, initialDirection, finalDirection, end);
+		lookAt({ 0,0,0 });
+		progress += 0.0004;
+	}
+	else if (stage == 7) {
+		glm::vec3 start(0, 0.9, 1);
+		glm::vec3 initialDirection(-1, 0.9, 0);
+		glm::vec3 finalDirection(1, 0.7, -1);
+		glm::vec3 end(0, 0.9, -0.7);
+		useBezierPosition(progress, start, initialDirection, finalDirection, end);
+		lookAt({ 0,0,0 });
+		progress += 0.0004;
 	}
 	else {
-		
-		//renderer = RAYTRACE;
+		renderer = RAYTRACE;
+
 	}
 }

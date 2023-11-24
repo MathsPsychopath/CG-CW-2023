@@ -230,7 +230,6 @@ int main(int argc, char *argv[]) {
 	}
 
 	RenderType renderer = RAYTRACE;
-	//glm::vec3 lightPosition = { 0, 0.5, 0.25 };
 	glm::vec3 lightPosition = { 0, 0.5, 0.75 };
 	bool hasParametersChanged = true;
 	if (!lighting.usePhong) Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
