@@ -230,10 +230,9 @@ int main(int argc, char *argv[]) {
 		objects.loadedVertices[vertexIndex].normal = glm::normalize(vertexNormal);
 	}
 
-	RenderType renderer = RAYTRACE;
+	RenderType renderer = RASTER;
 	glm::vec3 lightPosition = { 0, 0.5, 0.75 };
 	bool hasParametersChanged = true;
-	if (!lighting.usePhong) Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 
 	bool isCameraMoving = true;
 	float progression = 0;
@@ -250,9 +249,9 @@ int main(int argc, char *argv[]) {
 				Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 			}
 			auto colorBuffer = getRaytrace(camera, objects, textures, lightPosition, hiddenObjects);
-			/*if (lighting.useSoftShadow) {
+			if (lighting.useSoftShadow && lighting.useFilter) {
 				applyFilter(colorBuffer);
-			}*/
+			}
 			renderBuffer(colorBuffer, window);
 		}
 		else drawInterpolationRenders(window, camera, objects, renderer, textures, hiddenObjects);
@@ -260,8 +259,13 @@ int main(int argc, char *argv[]) {
 		std::string frameString = std::to_string(frame++);
 		std::string filename = "frame" + std::string(4 - std::min(4, int(frameString.length())), '0') + frameString + ".bmp";
 		window.renderFrame();
-		window.saveBMP("./renders/" + filename);
-		std::cout << "rendered frame " << frame << std::endl;
+		try {
+			window.saveBMP("C:\\Users\\0aaro\\source\\repos\\CG-CW-2023\\Week1\\extras\\RedNoise\\out\\build\\x64-Debug\\renders\\" + filename);
+			std::cout << "rendered frame " << frame << std::endl;
+		}
+		catch (const std::exception& exc) {
+			std::cout << exc.what() << std::endl;
+		}
 		if (progression > 1) {
 			progression = 0;
 			stage++;

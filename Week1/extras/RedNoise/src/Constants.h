@@ -1,7 +1,7 @@
 #pragma once
 
-const int WIDTH = 320;
-const int HEIGHT = 240;
+const int WIDTH = 640;
+const int HEIGHT = 480;
 const enum RenderType {
 	POINTCLOUD,
 	WIREFRAME,

@@ -4,7 +4,7 @@ Lighting lighting(true, false, false, false, false, false);
 
 Lighting::Lighting(bool initAmb, bool initShadow, bool initDiffuse, bool initSpec, bool initPhong, bool initSoft) :
 	useShadow(initShadow), useProximity(initDiffuse), useIncidence(initDiffuse), useSpecular(initSpec),
-	useAmbience(initAmb), usePhong(initPhong), useSoftShadow(initSoft), useReflections(false) {}
+	useAmbience(initAmb), usePhong(initPhong), useSoftShadow(initSoft), useReflections(false), useFilter(false) {}
 
 glm::vec3 Lighting::sampleLightPosition(const glm::vec3 lightPosition, float lightRadius) {
 	std::normal_distribution<float> distribution(0.0f, lightRadius);

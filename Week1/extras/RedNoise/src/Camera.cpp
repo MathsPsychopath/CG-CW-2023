@@ -97,14 +97,14 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 	else if (stage == 3) {
 		// half orbit the box with pointcloud
 		renderer = POINTCLOUD;
-		rotate(1, 0, 0);
+		rotate(-1, 0, 0);
 		progress += 1.0 / 90;
 		lookAt({ 0,0,0 });
 	}
 	else if (stage == 4) {
 		// orbit the box
 		renderer = WIREFRAME;
-		rotate(1, 0, 0);
+		rotate(-1, 0, 0);
 		progress += 1.0/90;
 		lookAt({ 0,0,0 });
 	}
@@ -121,7 +121,7 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 	}
 	else if (stage == 7) {
 		// go right top middle
-		if (progress > 0.8) {
+		if (progress > 0.5) {
 			renderer = RAYTRACE;
 			lighting.useAmbience = true;
 			lighting.useShadow = true;
@@ -136,48 +136,62 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 		lookAt({ 0,0,0 });
 		progress += 0.025;
 	}
-	else if (stage == 6) {
+	else if (stage == 8) {
 		if (progress > 0.2) {
 			hiddenObjects.erase("red_sphere");
+			hiddenObjects.erase("ceiling");
+			hiddenObjects.erase("right_wall");
 			lighting.useIncidence = true;
 		}
-		if (progress > 0.3) {
+		if (progress > 0.5) {
 			lighting.useSpecular = true;
 			lighting.useShadow = false;
 		}
-		if (progress > 0.4) {
-			lighting.useSoftShadow = true;
-		}
-		if (progress > 0.5) {
+		if (progress > 0.95) {
 			lighting.useReflections = true;
 		}
-		if (progress > 0.6) {
-			lighting.usePhong = true;
-			lighting.useIncidence = false;
-			lighting.useProximity = false;
-		}
-		if (progress > 0.7) {
-			lighting.useProximity = true;
-		}
-		if (progress > 0.8) {
-			lighting.useIncidence = true;
-		}
+		
 		glm::vec3 start(0.9, 0.9, 0);
 		glm::vec3 initialDirection(1, 1, 0);
 		glm::vec3 finalDirection(3, 0, -1);
 		glm::vec3 end(0, 0.9, 1);
 		useBezierPosition(progress, start, initialDirection, finalDirection, end);
 		lookAt({ 0,0,0 });
-		progress += 0.01;
+		progress += 0.005;
 	}
-	else if (stage == 7) {
+	else if (stage == 9) {
+		lighting.useSoftShadow = true;
+		if (progress > 0.3) {
+			lighting.useFilter = true;
+		}
+		if (progress > 0.7) {
+			lighting.useFilter = false;
+			lighting.usePhong = true;
+			lighting.useIncidence = false;
+			lighting.useProximity = false;
+		}
 		glm::vec3 start(0, 0.9, 1);
 		glm::vec3 initialDirection(-1, 0.9, 0);
 		glm::vec3 finalDirection(1, 0.7, -1);
 		glm::vec3 end(0, 0.9, -0.7);
 		useBezierPosition(progress, start, initialDirection, finalDirection, end);
 		lookAt({ 0,0,0 });
-		progress += 0.02;
+		progress += 0.005;
+	}
+	else if (stage == 10) {
+		if (progress > 0.2) {
+			lighting.useProximity = true;
+		}
+		if (progress > 0.6) {
+			lighting.useIncidence = true;
+		}
+		glm::vec3 start(0, 0.9, -0.7);
+		glm::vec3 initialDirection(0.5, 0.5, -0.2);
+		glm::vec3 finalDirection(-1, 1, -1);
+		glm::vec3 end(0, 0, 2);
+		useBezierPosition(progress, start, initialDirection, finalDirection, end);
+		lookAt({ 0,0,0 });
+		progress += 0.005;
 	}
 	else {
 		isCameraMoving = false;
