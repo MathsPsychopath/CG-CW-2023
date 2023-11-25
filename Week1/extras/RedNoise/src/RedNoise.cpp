@@ -52,7 +52,7 @@ std::vector<std::vector<uint32_t>> getRaytrace(Camera& camera, PolygonData& obje
 }
 
 float useGaussian(float value, float stddev) {
-	return std::expf(-(glm::pow(value, 2) / (2.0f * glm::pow(stddev, 2))));
+	return expf(-(glm::pow(value, 2) / (2.0f * glm::pow(stddev, 2))));
 }
 
 void splitChannels(uint32_t packed, int& red, int& green, int& blue) {
