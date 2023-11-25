@@ -4,16 +4,24 @@
 #include <glm/glm.hpp>
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
+#include <set>
+#include "Lighting.h"
 
 class Camera {
+private:
+	void useBezierPosition(float progress, glm::vec3 start, glm::vec3 initialDirection, glm::vec3 finalDirection, glm::vec3 end);
+
 public:
 	glm::vec3 cameraPosition;
+	glm::mat3 viewMatrix;
 
 	Camera(float x, float y, float z);
 
 	void translate(glm::vec3 movementVector);
 
-	void rotate(float xAnticlockwiseDegree, float yAnticlockwiseDegree);
+	void rotate(float xAnticlockwiseDegree, float yAnticlockwiseDegree, float zAnticlockwiseDegree);
 
-	glm::mat3 lookAt(glm::vec3 target);
+	void lookAt(glm::vec3 target);
+
+	void useAnimation(float& progress, int stage, RenderType& renderer, std::set<std::string>& hiddenObjects, Lighting& lighting, bool& isCameraMoving);
 };

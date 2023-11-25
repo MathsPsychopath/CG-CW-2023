@@ -14,6 +14,7 @@ struct ModelTriangle {
 	glm::vec3 normal{};
 	std::pair<glm::vec3, glm::vec3> boundingMinMax;
 	float reflectivity;
+	std::string objectName;
 
 	ModelTriangle();
 	ModelTriangle(int v1Index, int v2Index, int v3Index, Colour trigColour);

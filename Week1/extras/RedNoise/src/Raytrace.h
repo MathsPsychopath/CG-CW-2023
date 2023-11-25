@@ -14,5 +14,5 @@ namespace Raytrace {
 
 	void preprocessGouraud(PolygonData& objects, glm::vec3& lightPosition, glm::vec3& cameraPosition, bool& hasParametersChanged);
 
-	void renderSegment(glm::vec2 boundY, std::vector<std::vector<uint32_t>>& colorBuffer, PolygonData& objects, Camera& camera, TextureMap& textures, glm::vec3 lightOrigin);
+	void renderSegment(glm::vec2 boundY, std::vector<std::vector<uint32_t>>& colorBuffer, PolygonData& objects, Camera& camera, TextureMap& textures, glm::vec3 lightOrigin, std::set<std::string>& hiddenObjects);
 }

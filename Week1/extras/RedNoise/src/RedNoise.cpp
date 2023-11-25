@@ -7,11 +7,12 @@
 #include "Wireframe.h"
 #include "Raytrace.h"
 
-void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type, TextureMap& textures) {
+void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData& objects, RenderType type, TextureMap& textures, std::set<std::string>& hiddenObjects) {
 	window.clearPixels();
-	glm::mat3 viewMatrix = camera.lookAt({ 0,0,0 }); 
+	glm::mat3 viewMatrix = camera.viewMatrix;
 	std::vector<std::vector<float>> zDepth(HEIGHT, std::vector<float>(WIDTH, std::numeric_limits<float>::max()));
 	for (int triangleIndex = 0; triangleIndex < objects.loadedTriangles.size(); triangleIndex++) {
+		if (hiddenObjects.find(objects.loadedTriangles[triangleIndex].objectName) != hiddenObjects.end()) continue;
 		CanvasPoint first = Wireframe::canvasIntersection(camera, objects.getTriangleVertexPosition(triangleIndex, 0), 2.0, viewMatrix);
 		CanvasPoint second = Wireframe::canvasIntersection(camera, objects.getTriangleVertexPosition(triangleIndex, 1), 2.0, viewMatrix);
 		CanvasPoint third = Wireframe::canvasIntersection(camera, objects.getTriangleVertexPosition(triangleIndex, 2), 2.0, viewMatrix);
@@ -35,9 +36,8 @@ void drawInterpolationRenders(DrawingWindow& window, Camera &camera, PolygonData
 	}
 }
 
-std::vector<std::vector<uint32_t>> getRaytrace(Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition) {
+std::vector<std::vector<uint32_t>> getRaytrace(Camera& camera, PolygonData& objects, TextureMap& textures, glm::vec3 lightPosition, std::set<std::string>& hiddenObjects) {
 	// create results canvas
-	glm::mat3 inverseViewMatrix = glm::inverse(camera.lookAt({ 0,0,0 }));
 	std::vector<std::vector<uint32_t>> colorBuffer(HEIGHT, std::vector<uint32_t>(WIDTH));
 	std::vector<std::thread> threads;
 	// parallelise workload
@@ -45,7 +45,7 @@ std::vector<std::vector<uint32_t>> getRaytrace(Camera& camera, PolygonData& obje
 	for (int i = 0; i < 4; i++) {
 		int startY = (HEIGHT >> 2) * i;
 		int endY = (HEIGHT >> 2) * (i + 1);
-		threads.emplace_back(Raytrace::renderSegment, glm::vec2{startY, endY}, std::ref(colorBuffer), std::ref(objects), std::ref(camera), std::ref(textures), lightPosition);
+		threads.emplace_back(Raytrace::renderSegment, glm::vec2{startY, endY}, std::ref(colorBuffer), std::ref(objects), std::ref(camera), std::ref(textures), lightPosition, std::ref(hiddenObjects));
 	}
 	for (auto& thread : threads) thread.join();
 	return colorBuffer;
@@ -127,7 +127,7 @@ void applyFilter(std::vector<std::vector<uint32_t>>& colorBuffer) {
 }
 
 void renderBuffer(std::vector<std::vector<uint32_t>>& colorBuffer, DrawingWindow& window) {
-	for (int y = 0; y < HEIGHT; y++) {
+	for (int y = HEIGHT - 1; y > -1; y--) {
 		for (int x = 0; x < WIDTH; x++) {
 			window.setPixelColour(x, y, colorBuffer[y][x]);
 			window.renderFrame();
@@ -140,11 +140,11 @@ void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderT
 		hasParametersChanged = true;
 		if (event.key.keysym.sym == SDLK_LEFT) {
 			if (renderer == RAYTRACE) lightPosition += glm::vec3(-0.25, 0, 0);
-			else camera.rotate(0, -1);
+			else camera.rotate(0, -1, 0);
 		}
 		else if (event.key.keysym.sym == SDLK_RIGHT) {
 			if (renderer == RAYTRACE) lightPosition += glm::vec3(0.25, 0, 0);
-			else camera.rotate(0, 1);
+			else camera.rotate(0, 1, 0);
 		}
 		else if (event.key.keysym.sym == SDLK_UP) {
 			if (renderer == RAYTRACE) lightPosition += glm::vec3(0, 0.25, 0);
@@ -196,7 +196,7 @@ int main(int argc, char *argv[]) {
 	FileReader fr;
 	fr.readMTLFile("textured-cornell-box.mtl");
 	PolygonData objects = fr.readOBJFile("textured-cornell-box.obj", 0.35, { textures.width, textures.height });
-	//fr.appendPolygonData(objects, "sphere.obj");
+	fr.appendPolygonData(objects, "sphere.obj");
 	if (objects.loadedTriangles.empty()) return -1;
 	
 	glm::vec3 sceneMin(std::numeric_limits<float>::min());
@@ -230,26 +230,45 @@ int main(int argc, char *argv[]) {
 		objects.loadedVertices[vertexIndex].normal = glm::normalize(vertexNormal);
 	}
 
-	RenderType renderer = RAYTRACE;
-	glm::vec3 lightPosition = { 0, 0.5, 0.25 };
+	RenderType renderer = RASTER;
+	glm::vec3 lightPosition = { 0, 0.5, 0.75 };
 	bool hasParametersChanged = true;
-	if (!lighting.usePhong) Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 
-	while (true) {
+	bool isCameraMoving = true;
+	float progression = 0;
+	int stage = 0;
+	std::set<std::string> hiddenObjects = {"red_sphere"};
+	
+	int frame = 0;
+	while (isCameraMoving) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lightPosition, hasParametersChanged);
+		camera.useAnimation(progression, stage, renderer, hiddenObjects, lighting, isCameraMoving);
 		if (renderer == RAYTRACE) {
-			if (!lighting.usePhong && hasParametersChanged) {
+			if (!lighting.usePhong) {
 				Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
 			}
-			auto colorBuffer = getRaytrace(camera, objects, textures, lightPosition);
-			/*if (lighting.useSoftShadow) {
+			auto colorBuffer = getRaytrace(camera, objects, textures, lightPosition, hiddenObjects);
+			if (lighting.useSoftShadow && lighting.useFilter) {
 				applyFilter(colorBuffer);
-			}*/
+			}
 			renderBuffer(colorBuffer, window);
 		}
-		else drawInterpolationRenders(window, camera, objects, renderer, textures);
+		else drawInterpolationRenders(window, camera, objects, renderer, textures, hiddenObjects);
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
+		std::string frameString = std::to_string(frame++);
+		std::string filename = "frame" + std::string(4 - std::min(4, int(frameString.length())), '0') + frameString + ".bmp";
 		window.renderFrame();
+		try {
+			window.saveBMP("C:\\Users\\0aaro\\source\\repos\\CG-CW-2023\\Week1\\extras\\RedNoise\\out\\build\\x64-Debug\\renders\\" + filename);
+			std::cout << "rendered frame " << frame << std::endl;
+		}
+		catch (const std::exception& exc) {
+			std::cout << exc.what() << std::endl;
+		}
+		if (progression > 1) {
+			progression = 0;
+			stage++;
+		}
 	}
 }
