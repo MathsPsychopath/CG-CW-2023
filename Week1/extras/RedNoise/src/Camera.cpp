@@ -154,7 +154,7 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 		
 		glm::vec3 start(0.9, 0.9, 0);
 		glm::vec3 initialDirection(1, 1, 0);
-		glm::vec3 finalDirection(3, 0, -1);
+		glm::vec3 finalDirection(1, 0, -1);
 		glm::vec3 end(0, 0.9, 1);
 		useBezierPosition(progress, start, initialDirection, finalDirection, end);
 		lookAt({ 0,0,0 });
@@ -190,16 +190,18 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 		glm::vec3 start(0, 0.9, -0.7);
 		glm::vec3 initialDirection(0.5, 0.5, -0.2);
 		glm::vec3 finalDirection(-1, 1, -1);
-		glm::vec3 end(0, 0, 3.5);
+		glm::vec3 end(0, 0, 2);
 		useBezierPosition(progress, start, initialDirection, finalDirection, end);
 		lookAt({ 0,0,0 });
-		progress += 0.005;
+		progress += 0.01;
 	}
 	else if (stage == 11) {
+		lighting.useSoftShadow = false;
+		lighting.useShadow =true;
 		glm::vec3 start(0, 0.5, 0.75);
-		glm::vec3 initialDirection(-1, 2, 0.25);
-		glm::vec3 finalDirection(2, -0.5, -1);
-		glm::vec3 end(0.75, 1, -0.25);
+		glm::vec3 initialDirection(-0.5, 0.75, 1);
+		glm::vec3 finalDirection(0.5, -0.25, 0.5);
+		glm::vec3 end(0, 0.75, 1);
 		// progress is between 0 and 1
 		float inverseProgress = 1 - progress;
 		float quadProgress = glm::pow(progress, 2);
@@ -212,10 +214,29 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 		point += 3 * quadInvProgress * progress * initialDirection;
 		point += 3 * inverseProgress * quadProgress * finalDirection;
 		point += cubicProgress * end;
-		lightPosition += point;
-		progress += 0.05;
+		lightPosition = point;
+		progress += 0.01;
+	}
+	else if (stage == 12) {
+		glm::vec3 start(0,0.75, 1);
+		glm::vec3 initialDirection(-0.5, 0, 0.75);
+		glm::vec3 finalDirection(0.5, 0.25, 0.5);
+		glm::vec3 end(-0.25, 0.75, 1);
+		// progress is between 0 and 1
+		float inverseProgress = 1 - progress;
+		float quadProgress = glm::pow(progress, 2);
+		float quadInvProgress = glm::pow(inverseProgress, 2);
+		float cubicInvProgress = glm::pow(inverseProgress, 3);
+		float cubicProgress = glm::pow(progress, 3);
+
+		// this is literally binomial expansion
+		glm::vec3 point = cubicInvProgress * start;
+		point += 3 * quadInvProgress * progress * initialDirection;
+		point += 3 * inverseProgress * quadProgress * finalDirection;
+		point += cubicProgress * end;
+		lightPosition = point;
+		progress += 0.01;
 	}
 	else {
 		isCameraMoving = false;
-	}
-}
+	}		lighting.useShadow = true;

@@ -130,9 +130,9 @@ void renderBuffer(std::vector<std::vector<uint32_t>>& colorBuffer, DrawingWindow
 	for (int y = HEIGHT - 1; y > -1; y--) {
 		for (int x = 0; x < WIDTH; x++) {
 			window.setPixelColour(x, y, colorBuffer[y][x]);
-			window.renderFrame();
 		}
 	}
+	window.renderFrame();
 }
 
 void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderType& renderer, glm::vec3& lightPosition, bool& hasParametersChanged) {
@@ -258,10 +258,10 @@ int main(int argc, char *argv[]) {
 		else drawInterpolationRenders(window, camera, objects, renderer, textures, hiddenObjects);
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
 		std::string frameString = std::to_string(frame++);
-		std::string filename = "frame" + std::string(4 - std::min(4, int(frameString.length())), '0') + frameString + ".bmp";
+		std::string filename = "xframe" + std::string(4 - std::min(4, int(frameString.length())), '0') + frameString + ".bmp";
 		window.renderFrame();
 		try {
-			window.saveBMP("C:\\Users\\0aaro\\source\\repos\\CG-CW-2023\\Week1\\extras\\RedNoise\\out\\build\\x64-Debug\\renders\\" + filename);
+			window.saveBMP("./renders/" + filename);
 			std::cout << "rendered frame " << frame << std::endl;
 		}
 		catch (const std::exception& exc) {
