@@ -23,5 +23,5 @@ public:
 
 	void lookAt(glm::vec3 target);
 
-	void useAnimation(float& progress, int stage, RenderType& renderer, std::set<std::string>& hiddenObjects, Lighting& lighting, bool& isCameraMoving);
+	void useAnimation(float& progress, int stage, RenderType& renderer, std::set<std::string>& hiddenObjects, Lighting& lighting, bool& isCameraMoving, glm::vec3& lightPosition);
 };

@@ -67,7 +67,7 @@ void Camera::useBezierPosition(float progress, glm::vec3 start, glm::vec3 initia
 	this->cameraPosition = point;
 }
 
-void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std::set<std::string>& hiddenObjects, Lighting& lighting, bool& isCameraMoving) {
+void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std::set<std::string>& hiddenObjects, Lighting& lighting, bool& isCameraMoving, glm::vec3& lightPosition) {
 	if (stage == 0) {
 		// trucking movement to go past the cornell box
 		renderer = RASTER;
@@ -190,10 +190,30 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 		glm::vec3 start(0, 0.9, -0.7);
 		glm::vec3 initialDirection(0.5, 0.5, -0.2);
 		glm::vec3 finalDirection(-1, 1, -1);
-		glm::vec3 end(0, 0, 2);
+		glm::vec3 end(0, 0, 3.5);
 		useBezierPosition(progress, start, initialDirection, finalDirection, end);
 		lookAt({ 0,0,0 });
 		progress += 0.005;
+	}
+	else if (stage == 11) {
+		glm::vec3 start(0, 0.5, 0.75);
+		glm::vec3 initialDirection(-1, 2, 0.25);
+		glm::vec3 finalDirection(2, -0.5, -1);
+		glm::vec3 end(0.75, 1, -0.25);
+		// progress is between 0 and 1
+		float inverseProgress = 1 - progress;
+		float quadProgress = glm::pow(progress, 2);
+		float quadInvProgress = glm::pow(inverseProgress, 2);
+		float cubicInvProgress = glm::pow(inverseProgress, 3);
+		float cubicProgress = glm::pow(progress, 3);
+
+		// this is literally binomial expansion
+		glm::vec3 point = cubicInvProgress * start;
+		point += 3 * quadInvProgress * progress * initialDirection;
+		point += 3 * inverseProgress * quadProgress * finalDirection;
+		point += cubicProgress * end;
+		lightPosition += point;
+		progress += 0.05;
 	}
 	else {
 		isCameraMoving = false;

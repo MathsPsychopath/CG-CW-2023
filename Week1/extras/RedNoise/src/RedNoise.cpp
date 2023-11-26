@@ -243,7 +243,7 @@ int main(int argc, char *argv[]) {
 	while (isCameraMoving) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lightPosition, hasParametersChanged);
-		camera.useAnimation(progression, stage, renderer, hiddenObjects, lighting, isCameraMoving);
+		camera.useAnimation(progression, stage, renderer, hiddenObjects, lighting, isCameraMoving, lightPosition);
 		std::cout << "stage: " << stage << ", progression: " << progression << std::endl;
 		if (renderer == RAYTRACE) {
 			if (!lighting.usePhong) {
