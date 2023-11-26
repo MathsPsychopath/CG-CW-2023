@@ -240,11 +240,12 @@ int main(int argc, char *argv[]) {
 	std::set<std::string> hiddenObjects = {"red_sphere"};
 
 	int frame = 0;
+	// commented out bits are for the animation used in the final video submission
 	while (isCameraMoving) {
 		// We MUST poll for events - otherwise the window will freeze !
 		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lightPosition, hasParametersChanged);
-		camera.useAnimation(progression, stage, renderer, hiddenObjects, lighting, isCameraMoving, lightPosition);
-		std::cout << "stage: " << stage << ", progression: " << progression << std::endl;
+		// camera.useAnimation(progression, stage, renderer, hiddenObjects, lighting, isCameraMoving, lightPosition);
+		// std::cout << "stage: " << stage << ", progression: " << progression << std::endl;
 		if (renderer == RAYTRACE) {
 			if (!lighting.usePhong) {
 				Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
@@ -257,19 +258,19 @@ int main(int argc, char *argv[]) {
 		}
 		else drawInterpolationRenders(window, camera, objects, renderer, textures, hiddenObjects);
 		// Need to render the frame at the end, or nothing actually gets shown on the screen !
-		std::string frameString = std::to_string(frame++);
-		std::string filename = "xframe" + std::string(4 - std::min(4, int(frameString.length())), '0') + frameString + ".bmp";
+		// std::string frameString = std::to_string(frame++);
+		// std::string filename = "xframe" + std::string(4 - std::min(4, int(frameString.length())), '0') + frameString + ".bmp";
 		window.renderFrame();
-		try {
-			window.saveBMP("./renders/" + filename);
-			std::cout << "rendered frame " << frame << std::endl;
-		}
-		catch (const std::exception& exc) {
-			std::cout << exc.what() << std::endl;
-		}
-		if (progression > 1) {
-			progression = 0;
-			stage++;
-		}
+		// try {
+		// 	window.saveBMP("./renders/" + filename);
+		// 	std::cout << "rendered frame " << frame << std::endl;
+		// }
+		// catch (const std::exception& exc) {
+		// 	std::cout << exc.what() << std::endl;
+		// }
+		// if (progression > 1) {
+		// 	progression = 0;
+		// 	stage++;
+		// }
 	}
 }

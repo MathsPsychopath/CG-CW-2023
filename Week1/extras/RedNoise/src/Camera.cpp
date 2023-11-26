@@ -239,4 +239,5 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 	}
 	else {
 		isCameraMoving = false;
-	}		lighting.useShadow = true;
+	}		
+}
