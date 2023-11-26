@@ -1,6 +1,6 @@
 #pragma once
 #include <glm/vec3.hpp>
-#include <Colour.h>
+#include "Colour.h"
 
 struct GouraudVertex {
 	glm::vec3 position{};

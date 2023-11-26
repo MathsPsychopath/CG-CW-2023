@@ -21,6 +21,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(GLM_INCLUDE_DIRS libs/glm-0.9.7.2)
 
 find_package(SDL2 REQUIRED)
+find_package(Threads REQUIRED)
 
 include_directories(${SDL2_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS})
 include_directories(libs/sdw)
@@ -35,7 +36,7 @@ add_executable(RedNoise
         libs/sdw/TextureMap.cpp
         libs/sdw/TexturePoint.cpp
         libs/sdw/Utils.cpp
-        src/RedNoise.cpp   "src/FileReader.h" "src/FileReader.cpp"   "src/Constants.h" "src/Camera.h" "src/Camera.cpp" "src/Rasterize.h" "src/Rasterize.cpp" "src/Wireframe.h" "src/Wireframe.cpp" "src/Raytrace.h" "src/Raytrace.cpp" "src/Lighting.h" "src/Lighting.cpp" "libs/sdw/GouraudVertex.h" "libs/sdw/GouraudVertex.cpp" "libs/sdw/PolygonData.h" "libs/sdw/PolygonData.cpp")
+        "src/RedNoise.cpp"   "src/FileReader.h" "src/FileReader.cpp"   "src/Constants.h" "src/Camera.h" "src/Camera.cpp" "src/Rasterize.h" "src/Rasterize.cpp" "src/Wireframe.h" "src/Wireframe.cpp" "src/Raytrace.h" "src/Raytrace.cpp" "src/Lighting.h" "src/Lighting.cpp" "libs/sdw/GouraudVertex.h" "libs/sdw/GouraudVertex.cpp" "libs/sdw/PolygonData.h" "libs/sdw/PolygonData.cpp")
 
 if (MSVC)
     target_compile_options(RedNoise
@@ -72,3 +73,4 @@ target_compile_options(RedNoise PUBLIC "$<$<CONFIG:Release>:${RELEASE_OPTIONS}>"
 target_compile_options(RedNoise PUBLIC "$<$<CONFIG:Debug>:${DEBUG_OPTIONS}>")
  
 target_link_libraries(RedNoise PRIVATE ${SDL2_LIBRARIES})
+target_link_libraries(RedNoise PRIVATE Threads::Threads)
