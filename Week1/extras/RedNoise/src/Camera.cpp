@@ -140,7 +140,6 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 		if (progress > 0.2) {
 			hiddenObjects.erase("red_sphere");
 			hiddenObjects.erase("ceiling");
-			hiddenObjects.erase("right_wall");
 			lighting.useIncidence = true;
 		}
 		if (progress > 0.5) {
@@ -149,6 +148,8 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 		}
 		if (progress > 0.95) {
 			lighting.useReflections = true;
+			hiddenObjects.erase("right_wall");
+			hiddenObjects.erase("ceiling");
 		}
 		
 		glm::vec3 start(0.9, 0.9, 0);
@@ -165,7 +166,6 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 			lighting.useFilter = true;
 		}
 		if (progress > 0.7) {
-			lighting.useFilter = false;
 			lighting.usePhong = true;
 			lighting.useIncidence = false;
 			lighting.useProximity = false;
@@ -180,10 +180,12 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 	}
 	else if (stage == 10) {
 		if (progress > 0.2) {
+			lighting.useFilter = false;
 			lighting.useProximity = true;
 		}
 		if (progress > 0.6) {
 			lighting.useIncidence = true;
+			lighting.usePhong = true;
 		}
 		glm::vec3 start(0, 0.9, -0.7);
 		glm::vec3 initialDirection(0.5, 0.5, -0.2);
