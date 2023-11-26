@@ -103,7 +103,7 @@ namespace {
 		float cameraNormalAngle = glm::dot(normal, cameraDirection);
 		if (cameraNormalAngle < 0) return 1;
 
-		int samples = 5; // increase for better shadows, worse performance
+		int samples = 40; // increase for better shadows, worse performance
 		float lightRadius = 0.1;
 		glm::vec3 offsetPoint = initialIntersection.intersectionPoint + 
 			0.01f * initialIntersection.intersectedTriangle.normal;
