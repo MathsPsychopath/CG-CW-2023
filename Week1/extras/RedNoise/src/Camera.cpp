@@ -9,17 +9,30 @@ void Camera::translate(glm::vec3 movementVector) {
 	this->cameraPosition += movementVector;
 }
 
+void Camera::lookAt(glm::vec3 target) {
+	// calculates the forward, right, up vectors given the target and the world vertical
+	glm::vec3 forward = glm::normalize(this->cameraPosition - target);
+
+	glm::vec3 right = glm::normalize(glm::cross(glm::vec3(0, 1, 0), forward));
+
+	glm::vec3 up = glm::normalize(glm::cross(forward, right));
+
+	// mat3 is column-major, so we supply vectors directly
+	glm::mat3 viewMatrix = glm::mat3(right, up, forward);
+	this->viewMatrix = viewMatrix;
+}
+
 void Camera::rotate(float xAnticlockwiseDegree, float yAnticlockwiseDegree, float zAnticlockwiseDegree) {
 	const float xRad = glm::radians(xAnticlockwiseDegree);
 	const float yRad = glm::radians(yAnticlockwiseDegree);
 	const float zRad = glm::radians(zAnticlockwiseDegree);
 
-	const glm::mat3 xRotationMatrix = { 
+	const glm::mat3 xRotationMatrix = {
 		1.0, 0.0, 0.0,
 		0.0, std::cos(xRad), std::sin(xRad),
 		0.0, -std::sin(xRad), std::cos(xRad),
 	};
-	
+
 	const glm::mat3 yRotationMatrix = {
 		std::cos(yRad), 0.0, -std::sin(yRad),
 		0.0, 1.0, 0.0,
@@ -35,19 +48,7 @@ void Camera::rotate(float xAnticlockwiseDegree, float yAnticlockwiseDegree, floa
 	this->cameraPosition = xRotationMatrix * this->cameraPosition;
 	this->cameraPosition = yRotationMatrix * this->cameraPosition;
 	this->cameraPosition = zRotationMatrix * this->cameraPosition;
-}
-
-void Camera::lookAt(glm::vec3 target) {
-	// calculates the forward, right, up vectors given the target and the world vertical
-	glm::vec3 forward = glm::normalize(this->cameraPosition - target);
-
-	glm::vec3 right = glm::normalize(glm::cross(glm::vec3(0, 1, 0), forward));
-
-	glm::vec3 up = glm::normalize(glm::cross(forward, right));
-
-	// mat3 is column-major, so we supply vectors directly
-	glm::mat3 viewMatrix = glm::mat3(right, up, forward);
-	this->viewMatrix = viewMatrix;
+	this->lookAt({ 0,0,0 });
 }
 
 void Camera::useBezierPosition(float progress, glm::vec3 start, glm::vec3 initialDirection, glm::vec3 finalDirection, glm::vec3 end) {
@@ -239,5 +240,6 @@ void Camera::useAnimation(float& progress, int stage, RenderType& renderer, std:
 	}
 	else {
 		isCameraMoving = false;
+		std::cout << "trigger" << std::endl;
 	}		
 }

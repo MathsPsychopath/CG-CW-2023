@@ -276,8 +276,7 @@ void Raytrace::renderSegment(glm::vec2 boundY, std::vector<std::vector<uint32_t>
 	}
 }
 
-void Raytrace::preprocessGouraud(PolygonData& objects, glm::vec3& lightPosition, glm::vec3& cameraPosition, bool& hasParametersChanged) {
-	hasParametersChanged = false;
+void Raytrace::preprocessGouraud(PolygonData& objects, glm::vec3& lightPosition, glm::vec3& cameraPosition) {
 	for (auto& vertex : objects.loadedVertices) {
 		glm::vec3 lightDirection = glm::normalize(lightPosition - glm::vec3(vertex));
 		float lightDistance = glm::distance(lightPosition, glm::vec3(vertex));

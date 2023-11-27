@@ -135,9 +135,8 @@ void renderBuffer(std::vector<std::vector<uint32_t>>& colorBuffer, DrawingWindow
 	window.renderFrame();
 }
 
-void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderType& renderer, glm::vec3& lightPosition, bool& hasParametersChanged) {
+void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderType& renderer, glm::vec3& lightPosition) {
 	if (event.type == SDL_KEYDOWN) {
-		hasParametersChanged = true;
 		if (event.key.keysym.sym == SDLK_LEFT) {
 			if (renderer == RAYTRACE) lightPosition += glm::vec3(-0.25, 0, 0);
 			else camera.rotate(0, -1, 0);
@@ -173,7 +172,6 @@ void handleEvent(SDL_Event event, DrawingWindow &window, Camera &camera, RenderT
 		else if (event.key.keysym.sym == SDLK_p) lighting.useProximity = !lighting.useProximity;
 		else if (event.key.keysym.sym == SDLK_i) lighting.useIncidence = !lighting.useIncidence;
 		else if (event.key.keysym.sym == SDLK_z) lighting.useSpecular = !lighting.useSpecular;
-		else hasParametersChanged = false;
 	} else if (event.type == SDL_MOUSEBUTTONDOWN) {
 		int x, y;
 		SDL_GetMouseState(&x, &y);
@@ -232,7 +230,6 @@ int main(int argc, char *argv[]) {
 
 	RenderType renderer = RASTER;
 	glm::vec3 lightPosition = { 0, 0.5, 0.75 };
-	bool hasParametersChanged = true;
 
 	bool isCameraMoving = true;
 	float progression = 0;
@@ -243,12 +240,13 @@ int main(int argc, char *argv[]) {
 	// commented out bits are for the animation used in the final video submission
 	while (isCameraMoving) {
 		// We MUST poll for events - otherwise the window will freeze !
-		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lightPosition, hasParametersChanged);
+		if (window.pollForInputEvents(event)) handleEvent(event, window, camera, renderer, lightPosition);
 		// camera.useAnimation(progression, stage, renderer, hiddenObjects, lighting, isCameraMoving, lightPosition);
 		// std::cout << "stage: " << stage << ", progression: " << progression << std::endl;
+		camera.lookAt({ 0,0,0 });
 		if (renderer == RAYTRACE) {
 			if (!lighting.usePhong) {
-				Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition, hasParametersChanged);
+				Raytrace::preprocessGouraud(objects, lightPosition, camera.cameraPosition);
 			}
 			auto colorBuffer = getRaytrace(camera, objects, textures, lightPosition, hiddenObjects);
 			if (lighting.useSoftShadow && lighting.useFilter) {
